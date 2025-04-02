@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   zalo-server:
-    image: cangphamdocker/zalo-server:latest
+    image: tienta/zalo-server:latest
     ports:
       - "${CONTAINER_PORT:-3080}:${CONTAINER_PORT:-3080}" # Ánh xạ cổng động cho Express
       - "${CONTAINER_PORT_WS:-3001}:${CONTAINER_PORT_WS:-3001}" # Ánh xạ cổng động cho WebSocket
