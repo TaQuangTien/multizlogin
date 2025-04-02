@@ -302,129 +302,145 @@ export async function sendImagesToGroup(req, res) {
 }
 
 export async function loginZaloAccount(customProxy, cred) {
-  let loginResolve;
-  return new Promise(async (resolve, reject) => {
-    loginResolve = resolve;
-    let agent = null;
-    let proxyUsed = null;
-    let useCustomProxy = false;
-    let proxies = [];
+    let loginResolve;
+    return new Promise(async (resolve, reject) => {
+        loginResolve = resolve;
+        let agent = null;
+        let proxyUsed = null;
+        let useCustomProxy = false;
+        let proxies = [];
 
-    try {
-      const proxiesJson = fs.readFileSync('proxies.json', 'utf8');
-      proxies = JSON.parse(proxiesJson);
-    } catch (error) {
-      console.error('Không thể đọc proxies.json:', error);
-    }
-
-    if (customProxy && customProxy.trim() !== '') {
-      try {
-        new URL(customProxy);
-        useCustomProxy = true;
-        agent = new HttpsProxyAgent(customProxy);
-
-        if (!proxies.includes(customProxy)) {
-          proxies.push(customProxy);
-          fs.writeFileSync('proxies.json', JSON.stringify(proxies, null, 4), 'utf8');
-          console.log(`Đã thêm proxy mới: ${customProxy}`);
+        try {
+            const proxiesJson = fs.readFileSync('proxies.json', 'utf8');
+            proxies = JSON.parse(proxiesJson);
+        } catch (error) {
+            console.error('Không thể đọc proxies.json:', error);
         }
-      } catch (err) {
-        console.log(`Proxy không hợp lệ: ${customProxy}. Sẽ không dùng proxy.`);
-        useCustomProxy = false;
-        agent = null;
-      }
-    } else {
-      if (proxies.length > 0) {
-        const proxyIndex = proxyService.getAvailableProxyIndex();
-        if (proxyIndex !== -1) {
-          proxyUsed = proxyService.getPROXIES()[proxyIndex];
-          agent = new HttpsProxyAgent(proxyUsed.url);
-        }
-      }
-    }
 
-    const zalo = agent
-      ? new Zalo({ agent, polyfill: nodefetch })
-      : new Zalo({ polyfill: nodefetch });
+        if (customProxy && customProxy.trim() !== '') {
+            try {
+                new URL(customProxy);
+                useCustomProxy = true;
+                agent = new HttpsProxyAgent(customProxy);
 
-    let api;
-    if (cred) {
-      try {
-        api = await zalo.login(cred);
-      } catch (error) {
-        console.error('Lỗi đăng nhập bằng cookie:', error);
-        api = await zalo.loginQR(null, (qrData) => {
-          if (qrData?.data?.image) {
-            resolve(`data:image/png;base64,${qrData.data.image}`);
-          } else {
-            reject(new Error('Không thể lấy mã QR'));
-          }
-        });
-      }
-    } else {
-      api = await zalo.loginQR(null, (qrData) => {
-        if (qrData?.data?.image) {
-          resolve(`data:image/png;base64,${qrData.data.image}`);
+                if (!proxies.includes(customProxy)) {
+                    proxies.push(customProxy);
+                    fs.writeFileSync('proxies.json', JSON.stringify(proxies, null, 4), 'utf8');
+                    console.log(`Đã thêm proxy mới: ${customProxy}`);
+                }
+            } catch (err) {
+                console.log(`Proxy không hợp lệ: ${customProxy}. Sẽ không dùng proxy.`);
+                useCustomProxy = false;
+                agent = null;
+            }
         } else {
-          reject(new Error('Không thể lấy mã QR'));
+            if (proxies.length > 0) {
+                const proxyIndex = proxyService.getAvailableProxyIndex();
+                if (proxyIndex !== -1) {
+                    proxyUsed = proxyService.getPROXIES()[proxyIndex];
+                    agent = new HttpsProxyAgent(proxyUsed.url);
+                }
+            }
         }
-      });
-    }
 
-    setupEventListeners(api, loginResolve);
-    api.listener.start();
+        const zalo = agent
+            ? new Zalo({ agent, polyfill: nodefetch })
+            : new Zalo({ polyfill: nodefetch });
 
-    if (!useCustomProxy && proxyUsed) {
-      proxyUsed.usedCount++;
-      proxyUsed.accounts.push({ api, phoneNumber: null }); // Sẽ cập nhật phoneNumber sau
-    }
+        let api;
+        if (cred) {
+            try {
+                api = await zalo.login(cred);
+            } catch (error) {
+                console.error('Lỗi đăng nhập bằng cookie:', error);
+                api = await zalo.loginQR(null, (qrData) => {
+                    if (qrData?.data?.image) {
+                        resolve(`data:image/png;base64,${qrData.data.image}`);
+                    } else {
+                        reject(new Error('Không thể lấy mã QR'));
+                    }
+                });
+            }
+        } else {
+            // Thêm timeout cho loginQR
+            const QR_TIMEOUT = 120000; // 2 phút
+            const loginPromise = zalo.loginQR(null, (qrData) => {
+                if (qrData?.data?.image) {
+                    resolve(`data:image/png;base64,${qrData.data.image}`);
+                } else {
+                    reject(new Error('Không thể lấy mã QR'));
+                }
+            });
 
-    const accountInfo = await api.fetchAccountInfo();
-    if (!accountInfo?.profile) {
-      throw new Error('Không tìm thấy thông tin profile');
-    }
-    const { profile } = accountInfo;
-    const phoneNumber = profile.phoneNumber;
-    const ownId = profile.userId;
-    const displayName = profile.displayName;
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error('QR code đã hết hạn, vui lòng thử lại'));
+                }, QR_TIMEOUT);
+            });
 
-    const existingAccountIndex = zaloAccounts.findIndex((acc) => acc.ownId === api.getOwnId());
-    if (existingAccountIndex !== -1) {
-      zaloAccounts[existingAccountIndex] = {
-        api,
-        ownId: api.getOwnId(),
-        proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
-        phoneNumber,
-      };
-    } else {
-      zaloAccounts.push({
-        api,
-        ownId: api.getOwnId(),
-        proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
-        phoneNumber,
-      });
-    }
+            try {
+                api = await Promise.race([loginPromise, timeoutPromise]);
+            } catch (error) {
+                console.error('Lỗi đăng nhập QR:', error.message);
+                reject(error); // Đảm bảo reject lỗi để không treo Promise
+                return;
+            }
+        }
 
-    if (!useCustomProxy && proxyUsed) {
-      const proxyAccount = proxyUsed.accounts.find((acc) => acc.api === api);
-      if (proxyAccount) proxyAccount.phoneNumber = phoneNumber;
-    }
+        setupEventListeners(api, loginResolve);
+        api.listener.start();
 
-    const context = await api.getContext();
-    const { imei, cookie, userAgent } = context;
-    const data = { imei, cookie, userAgent };
-    const cookiesDir = './cookies';
-    if (!fs.existsSync(cookiesDir)) {
-      fs.mkdirSync(cookiesDir);
-    }
-    fs.writeFile(`${cookiesDir}/cred_${ownId}.json`, JSON.stringify(data, null, 4), (err) => {
-      if (err) console.error('Lỗi ghi file:', err);
+        if (!useCustomProxy && proxyUsed) {
+            proxyUsed.usedCount++;
+            proxyUsed.accounts.push({ api, phoneNumber: null });
+        }
+
+        const accountInfo = await api.fetchAccountInfo();
+        if (!accountInfo?.profile) {
+            throw new Error('Không tìm thấy thông tin profile');
+        }
+        const { profile } = accountInfo;
+        const phoneNumber = profile.phoneNumber;
+        const ownId = profile.userId;
+        const displayName = profile.displayName;
+
+        const existingAccountIndex = zaloAccounts.findIndex((acc) => acc.ownId === api.getOwnId());
+        if (existingAccountIndex !== -1) {
+            zaloAccounts[existingAccountIndex] = {
+                api,
+                ownId: api.getOwnId(),
+                proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
+                phoneNumber,
+            };
+        } else {
+            zaloAccounts.push({
+                api,
+                ownId: api.getOwnId(),
+                proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
+                phoneNumber,
+            });
+        }
+
+        if (!useCustomProxy && proxyUsed) {
+            const proxyAccount = proxyUsed.accounts.find((acc) => acc.api === api);
+            if (proxyAccount) proxyAccount.phoneNumber = phoneNumber;
+        }
+
+        const context = await api.getContext();
+        const { imei, cookie, userAgent } = context;
+        const data = { imei, cookie, userAgent };
+        const cookiesDir = './cookies';
+        if (!fs.existsSync(cookiesDir)) {
+            fs.mkdirSync(cookiesDir);
+        }
+        fs.writeFile(`${cookiesDir}/cred_${ownId}.json`, JSON.stringify(data, null, 4), (err) => {
+            if (err) console.error('Lỗi ghi file:', err);
+        });
+
+        console.log(
+            `Đã đăng nhập ${ownId} (${displayName}) - ${phoneNumber} qua proxy ${
+                useCustomProxy ? customProxy : proxyUsed?.url || 'không có proxy'
+            }`
+        );
     });
-
-    console.log(
-      `Đã đăng nhập ${ownId} (${displayName}) - ${phoneNumber} qua proxy ${
-        useCustomProxy ? customProxy : proxyUsed?.url || 'không có proxy'
-      }`
-    );
-  });
 }
