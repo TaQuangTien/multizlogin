@@ -1,216 +1,290 @@
+// routes-ui.js
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { zaloAccounts, loginZaloAccount } from './api/zalo/zalo.js';
 import { proxyService } from './proxyService.js';
+import { broadcastLoginSuccess } from './server.js';
 
 const router = express.Router();
 
-// Dành cho ES Module: xác định __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const configPath = path.join(__dirname, 'webhook-config.json');
 
 router.get('/', (req, res) => {
+  res.send(`
+        <html>
+          <body>
+            <script>window.location.href = '/home';</script>
+          </body>
+        </html>
+      `);
+});
+
+router.get('/home', (req, res) => {
+  let accountsHtml = '<p>Chưa có tài khoản nào đăng nhập</p>';
+  if (zaloAccounts.length > 0) {
+    accountsHtml = '<table border="1"><thead><tr><th>Own ID</th><th>Phone Number</th><th>Proxy</th></tr></thead><tbody>';
+    zaloAccounts.forEach((account) => {
+      accountsHtml += `<tr><td>${account.ownId}</td><td>${account.phoneNumber || 'N/A'}</td><td>${
+        account.proxy || 'Không có'
+      }</td></tr>`;
+    });
+    accountsHtml += '</tbody></table>';
+  }
+  accountsHtml += '<br><a href="/login" class="button">Đăng nhập qua QR Code</a>';
+
+  const proxies = proxyService.getPROXIES();
+  let proxiesHtml = '<p>Chưa có proxy nào</p>';
+  if (proxies.length > 0) {
+    proxiesHtml = '<table border="1"><thead><tr><th>Proxy URL</th><th>Số tài khoản</th><th>Danh sách số điện thoại</th></tr></thead><tbody>';
+    proxies.forEach((proxy) => {
+      const accountsList =
+        proxy.accounts.length > 0
+          ? proxy.accounts.map((acc) => acc.phoneNumber || 'N/A').join(', ')
+          : 'Chưa có';
+      proxiesHtml += `<tr><td>${proxy.url}</td><td>${proxy.usedCount}</td><td>${accountsList}</td></tr>`;
+    });
+    proxiesHtml += '</tbody></table>';
+  }
+  proxiesHtml += `
+    <br>
+    <form action="/proxies" method="POST" style="display: inline;">
+      <input type="text" name="proxyUrl" placeholder="Nhập proxy URL" required>
+      <button type="submit" class="button">Thêm Proxy</button>
+    </form>
+    <form action="/proxies" method="POST" style="display: inline;">
+      <input type="hidden" name="_method" value="DELETE">
+      <input type="text" name="proxyUrl" placeholder="Nhập proxy URL để xóa" required>
+      <button type="submit" class="button">Xóa Proxy</button>
+    </form>
+  `;
+
+  let webhookConfigHtml = '<p>Chưa có cấu hình webhook</p>';
+  try {
+    const configData = fs.readFileSync(configPath, 'utf8');
+    const config = JSON.parse(configData);
+    webhookConfigHtml = `
+      <ul>
+        <li>Message Webhook: ${config.messageWebhookUrl || 'N/A'}</li>
+        <li>Group Event Webhook: ${config.groupEventWebhookUrl || 'N/A'}</li>
+        <li>Reaction Webhook: ${config.reactionWebhookUrl || 'N/A'}</li>
+      </ul>
+    `;
+  } catch (error) {
+    console.error('Lỗi khi đọc cấu hình webhook:', error);
+  }
+  webhookConfigHtml += '<br><a href="/updateWebhookForm" class="button">Cập nhật Webhook</a>';
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+      <meta charset="UTF-8">
+      <title>Zalo Bot - Trang Quản Lý</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #2c3e50; }
+        .section { margin-bottom: 20px; }
+        .button { 
+          display: inline-block; 
+          padding: 10px 20px; 
+          margin: 5px; 
+          background-color: #3498db; 
+          color: white; 
+          text-decoration: none; 
+          border-radius: 5px; 
+        }
+        .button:hover { background-color: #2980b9; }
+        ul { line-height: 1.6; }
+        table { border-collapse: collapse; width: 100%; max-width: 800px; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+      </style>
+    </head>
+    <body>
+      <h1>Zalo Bot - Trang Quản Lý</h1>
+      <div class="section">
+        <h2>Danh sách tài khoản</h2>
+        ${accountsHtml}
+      </div>
+      <div class="section">
+        <h2>Danh sách Proxy hiện tại</h2>
+        ${proxiesHtml}
+      </div>
+      <div class="section">
+        <h2>Cấu hình Webhook hiện tại</h2>
+        ${webhookConfigHtml}
+      </div>
+      <div class="section">
+        <a href="/list" class="button" target="_blank">Tài liệu API</a>
+      </div>
+      <div class="section">
+        <h2>Hướng dẫn giới hạn Zalo</h2>
+        <ul>
+          <li><strong>Thời gian nghỉ</strong> giữa 2 lần gửi tin nhắn: <em>60 - 150 giây</em></li>
+          <li><strong>Giới hạn gửi tin nhắn/ngày</strong>:
+            <ul>
+              <li>TK lâu năm (>1 năm, chưa bị hạn chế): Bắt đầu <strong>30</strong>, tăng dần +20 mỗi 3 ngày, tối đa 150.</li>
+              <li>TK mới: <strong>10 - 30</strong> tin nhắn/ngày.</li>
+            </ul>
+          </li>
+          <li><strong>Giới hạn tìm số điện thoại/giờ</strong>:
+            <ul>
+              <li>TK cá nhân: 15 tin nhắn/60 phút.</li>
+              <li>TK business: 30 tin nhắn/60 phút.</li>
+            </ul>
+          </li>
+          <li><strong>Kết bạn</strong>: Không vượt quá <strong>30 - 35 người/ngày</strong> (tách riêng nếu gửi tin nhắn nhiều).</li>
+        </ul>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+router.get('/login', (req, res) => {
+  const loginFile = path.join(__dirname, 'login.html');
+  fs.readFile(loginFile, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Lỗi khi đọc file login.html:', err);
+      return res.status(500).send('Không thể tải trang đăng nhập.');
+    }
+    res.send(data);
+  });
+});
+
+router.post('/login', async (req, res) => {
+  try {
+    const { proxy } = req.body;
+    const qrCodeImage = await loginZaloAccount(proxy || null, null);
+    const containerIp = process.env.CONTAINER_IP || 'localhost'; // Lấy CONTAINER_IP từ biến môi trường
+    const wsPort = process.env.CONTAINER_PORT_WS || 3001; // Lấy CONTAINER_PORT_WS từ biến môi trường
     res.send(`
-  <!DOCTYPE html>
-  <html lang="vi">
-  <head>
-    <meta charset="UTF-8">
-    <title>Zalo server</title>
-  </head>
-  <body>
-    <h1>Zalo server - Đăng nhập qua QR Code với Proxy</h1>
-    <p><strong>(Mỗi Proxy tối đa 3 tài khoản)</strong></p>
-    
-    <h2>CÁCH CÀI GIỚI HẠN GỬI NGƯỜI LẠ ZALO:</h2>
-    <ul>
-      <li><strong>Thời gian nghỉ</strong> giữa 2 lần gửi tin nhắn (dòng 1): <em>60 - 150 giây</em></li>
-      <li><strong>Giới hạn gửi tin nhắn</strong> trong ngày (dòng 2):
-        <ul>
-          <li>TK Zalo lâu năm, trên 1 năm, chưa từng bị hạn chế: Chỉnh <strong>30</strong> (sau đó tăng dần, mỗi 3 ngày, tăng +20, tối đa 150).</li>
-          <li>TK Zalo mới tạo: Chỉ nên <strong>10 - 30</strong> tin nhắn / nick.</li>
-        </ul>
-      </li>
-      <li><strong>Giới hạn lượt tìm số điện thoại</strong> trong 1 tiếng:
-        <ul>
-          <li>TK cá nhân: 15 tin nhắn trong 60 phút.</li>
-          <li>TK business: 30 tin nhắn trong 60 phút.</li>
-        </ul>
-      </li>
-      <li><strong>Khi chạy kết bạn</strong>: 
-        <ul>
-          <li>Không nên vượt quá <strong>30 - 35 người/ngày</strong> với tài khoản cá nhân.</li>
-          <li>Nếu đang chạy gửi tin nhắn nhiều, nên tách riêng quá trình kết bạn để tránh giới hạn.</li>
-        </ul>
-      </li>
-    </ul>
-  </body>
-  </html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Quét mã QR</title>
+        </head>
+        <body>
+          <h2>Quét mã QR để đăng nhập</h2>
+          <img src="${qrCodeImage}" alt="QR Code"/>
+          <script>
+			const socket = new WebSocket('ws://${containerIp}:${wsPort}');
+			socket.onmessage = function(event) {
+				console.log('Received:', event.data);
+				if (event.data === 'login_success') {
+					alert('Đăng nhập thành công. Tự động chuyển về Home sau 5 giây');
+					setTimeout(function() {
+						window.location.href = '/home';
+					}, 5000); // 5000 milliseconds = 5 giây
+				}
+			};
+			socket.onerror = function(error) {
+				alert('Thất bại. Hãy thử lại sau. Tự động về Home sau 5 giây');
+				setTimeout(function() {
+						window.location.href = '/home';
+					}, 5000); // 5000 milliseconds = 5 giây
+				console.error('WebSocket error:', error);
+			};
+		  </script>
+        </body>
+      </html>
     `);
-  });
-  
-
-// Hiển thị form đăng nhập
-router.get('/zalo-login', (req, res) => {
-    const loginFile = path.join(__dirname, 'login.html');
-    fs.readFile(loginFile, 'utf8', (err, data) => {
-      if (err) {
-        console.error('Lỗi khi đọc file login.html:', err);
-        return res.status(500).send('Không thể tải trang đăng nhập.');
-      }
-      res.send(data);
-    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-// Xử lý đăng nhập: sử dụng proxy do người dùng nhập nếu hợp lệ, nếu không sẽ sử dụng proxy mặc định
-let loginResolve;
-router.post('/zalo-login', async (req, res) => {
-    try {
-        const { proxy } = req.body;
-        const qrCodeImage = await loginZaloAccount(proxy, null);
-        res.send(`
-            <html>
-               <head>
-                  <meta charset="UTF-8">
-                  <meta charset="UTF-8">
-                  <title>Quét mã QR</title>
-               </head>
-               <body>
-                  <h2>Quét mã QR để đăng nhập</h2>
-                  <img src="${qrCodeImage}" alt="QR Code"/>
-                  <script>
-                      const socket = new WebSocket('ws://localhost:3000');
-                      socket.onmessage = function(event) {
-                            console.log(event.data)
-                          if (event.data === 'login_success') {
-                              document.body.innerHTML = \`
-                                  <h2>Đăng nhập thành công!</h2>
-                                  <p style='color: green;'><b>Đăng nhập thành công!</b></p>
-                              \`;
-                          }
-                      };
-                  </script>
-               </body>
-            </html>
-         `);
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Hiển thị form cập nhật webhook URL
 router.get('/updateWebhookForm', (req, res) => {
-    const docFile = path.join(__dirname, 'updateWebhookForm.html');
-    fs.readFile(docFile, 'utf8', (err, data) => {
-      if (err) {
-        console.error('Lỗi khi đọc file tài liệu:', err);
-        return res.status(500).send('Không thể tải tài liệu API.');
-      }
-      res.send(data);
-    });
-  });
-
-// Endpoint hiển thị tài liệu API (đọc file api-doc.html)
-router.get('/list', (req, res) => {
-    const docFile = path.join(__dirname, 'api-doc.html');
-    fs.readFile(docFile, 'utf8', (err, data) => {
-      if (err) {
-        console.error('Lỗi khi đọc file tài liệu:', err);
-        return res.status(500).send('Không thể tải tài liệu API.');
-      }
-      res.send(data);
-    });
-  });
-
-// Lấy danh sách tài khoản đã đăng nhập
-router.get('/accounts', (req, res) => {
-    if (zaloAccounts.length === 0) {
-        return res.json({ success: true, message: 'Chưa có tài khoản nào đăng nhập' });
+  const docFile = path.join(__dirname, 'updateWebhookForm.html');
+  fs.readFile(docFile, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Lỗi khi đọc file tài liệu:', err);
+      return res.status(500).send('Không thể tải tài liệu API.');
     }
-    const accounts = zaloAccounts.map(account => ({
-        ownId: account.ownId,
-        proxy: account.proxy,
-        phoneNumber: account.phoneNumber || 'N/A',
-    }));
-    
-
-    // Tạo bảng HTML
-    let html = '<table border="1">';
-    html += '<thead><tr>';
-    const headers = ['Own ID', 'Phone Number', 'Proxy'];
-    headers.forEach(header => {
-        html += `<th>${header}</th>`;
-    });
-    html += '</tr></thead><tbody>';
-    accounts.forEach((account) => {
-        html += '<tr>';
-        html += `<td>${account.ownId}</td>`;
-        html += `<td>${account.phoneNumber || 'N/A'}</td>`;
-        html += `<td>${account.proxy}</td>`;
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-    
-
-    res.send(html);
+    res.send(data);
+  });
 });
 
-// Endpoint cập nhật 3 webhook URL
+router.get('/list', (req, res) => {
+  const docFile = path.join(__dirname, 'api-doc.html');
+  fs.readFile(docFile, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Lỗi khi đọc file tài liệu:', err);
+      return res.status(500).send('Không thể tải tài liệu API.');
+    }
+    res.send(data);
+  });
+});
+
 router.post('/updateWebhook', (req, res) => {
   const { messageWebhookUrl, groupEventWebhookUrl, reactionWebhookUrl } = req.body;
-  // Kiểm tra tính hợp lệ của từng URL
-  if (!messageWebhookUrl || !messageWebhookUrl.startsWith("http")) {
-      return res.status(400).json({ success: false, error: 'messageWebhookUrl không hợp lệ' });
+  if (!messageWebhookUrl || !messageWebhookUrl.startsWith('http')) {
+    return res.status(400).json({ success: false, error: 'messageWebhookUrl không hợp lệ' });
   }
-  if (!groupEventWebhookUrl || !groupEventWebhookUrl.startsWith("http")) {
-      return res.status(400).json({ success: false, error: 'groupEventWebhookUrl không hợp lệ' });
+  if (!groupEventWebhookUrl || !groupEventWebhookUrl.startsWith('http')) {
+    return res.status(400).json({ success: false, error: 'groupEventWebhookUrl không hợp lệ' });
   }
-  if (!reactionWebhookUrl || !reactionWebhookUrl.startsWith("http")) {
-      return res.status(400).json({ success: false, error: 'reactionWebhookUrl không hợp lệ' });
+  if (!reactionWebhookUrl || !reactionWebhookUrl.startsWith('http')) {
+    return res.status(400).json({ success: false, error: 'reactionWebhookUrl không hợp lệ' });
   }
   const config = { messageWebhookUrl, groupEventWebhookUrl, reactionWebhookUrl };
-  fs.writeFile(configPath, JSON.stringify(config, null, 2), err => {
-      if (err) {
-          console.error("Lỗi khi ghi file cấu hình:", err);
-          return res.status(500).json({ success: false, error: err.message });
-      }
-      res.json({ success: true, message: 'Webhook URLs đã được cập nhật' });
+  fs.writeFile(configPath, JSON.stringify(config, null, 2), (err) => {
+    if (err) {
+      console.error('Lỗi khi ghi file cấu hình:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    res.send(`
+      <html>
+        <body>
+          <script>window.location.href = '/home';</script>
+        </body>
+      </html>
+    `);
   });
 });
 
-// API quản lý proxy
-// Lấy danh sách proxy hiện có
 router.get('/proxies', (req, res) => {
   res.json({ success: true, data: proxyService.getPROXIES() });
 });
 
-// Thêm một proxy mới
 router.post('/proxies', (req, res) => {
-  const { proxyUrl } = req.body;
-  if (!proxyUrl) {
+  const { proxyUrl, _method } = req.body;
+  if (_method === 'DELETE') {
+    if (!proxyUrl || !proxyUrl.trim()) {
       return res.status(400).json({ success: false, error: 'proxyUrl không hợp lệ' });
-  }
-  try {
-      const newProxy = proxyService.addProxy(proxyUrl);
-      res.json({ success: true, data: newProxy });
-  } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Xóa một proxy
-router.delete('/proxies', (req, res) => {
-  const { proxyUrl } = req.body;
-  if (!proxyUrl) {
-      return res.status(400).json({ success: false, error: 'proxyUrl không hợp lệ' });
-  }
-  try {
+    }
+    try {
       proxyService.removeProxy(proxyUrl);
-      res.json({ success: true, message: 'Xóa proxy thành công' });
-  } catch (error) {
+      res.send(`
+        <html>
+          <body>
+            <script>window.location.href = '/home';</script>
+          </body>
+        </html>
+      `);
+    } catch (error) {
       res.status(500).json({ success: false, error: error.message });
+    }
+  } else {
+    if (!proxyUrl || !proxyUrl.trim()) {
+      return res.status(400).json({ success: false, error: 'proxyUrl không hợp lệ' });
+    }
+    try {
+      const newProxy = proxyService.addProxy(proxyUrl);
+      res.send(`
+        <html>
+          <body>
+            <script>window.location.href = '/home';</script>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 });
 
