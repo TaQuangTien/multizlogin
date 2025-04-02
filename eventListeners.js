@@ -44,6 +44,17 @@ export function setupEventListeners(api, loginResolve) {
 
   api.listener.onError((error) => {
     console.error('Error:', error);
+    if (error.message.includes('QR expired')) {
+        console.log('QR code đã hết hạn, tạo mã QR mới...');
+        // Gọi lại loginQR để tạo mã QR mới
+        api.loginQR(null, (qrData) => {
+            if (qrData?.data?.image) {
+                loginResolve(`data:image/png;base64,${qrData.data.image}`);
+            } else {
+                console.error('Không thể tạo mã QR mới');
+            }
+        });
+    }
   });
 }
 
