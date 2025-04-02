@@ -13,8 +13,9 @@ RUN npm install
 # Copy toàn bộ mã nguồn vào container
 COPY . .
 
-# Expose cổng mà server lắng nghe (trong trường hợp này là 3000)
-EXPOSE 3000
+# Expose cổng mà server lắng nghe
+EXPOSE 3080
+EXPOSE 3001
 
 # Khởi chạy ứng dụng
 CMD ["npm", "start"]
