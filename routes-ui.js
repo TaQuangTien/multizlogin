@@ -175,7 +175,6 @@ router.post('/login', async (req, res) => {
                         <body>
                             <h2>Quét mã QR để đăng nhập</h2>
                             <img id="qrCode" src="${qrCodeImage}" alt="QR Code"/>
-                            <button id="retryButton" style="display:none;" onclick="retryQR()">Thử lại</button>
                             <script>
                                 const socket = new WebSocket('ws://${containerIp}:${wsPort}');
                                 socket.onmessage = function(event) {
@@ -190,16 +189,18 @@ router.post('/login', async (req, res) => {
                                         document.getElementById('retryButton').style.display = 'block';
                                     }
                                 };
-                                socket.onerror = function(error) {
-                                    alert('Thất bại. Hãy thử lại sau. Tự động về Home sau 5 giây');
-                                    setTimeout(function() {
-                                        window.location.href = '/home';
-                                    }, 5000);
-                                    console.error('WebSocket error:', error);
+                                socket.onmessage = function(event) {
+                                    console.log('Received:', event.data);
+                                    if (event.data === 'login_success') {
+                                        alert('Đăng nhập thành công. Tự động chuyển về Home sau 5 giây');
+                                        setTimeout(function() {
+                                            window.location.href = '/home';
+                                        }, 5000);
+                                    } else if (event.data === 'qr_expired') {
+                                        alert('Mã QR đã hết hạn.');
+                                        document.getElementById('retryButton').style.display = 'block';
+                                    }
                                 };
-                                function retryQR() {
-                                    window.location.reload(); // Tải lại trang để tạo mã QR mới
-                                }
                             </script>
                         </body>
                     </html>
