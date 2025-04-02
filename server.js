@@ -72,3 +72,8 @@ if (fs.existsSync(cookiesDir)) {
 app.listen(CONTAINER_PORT, LISTEN_IP, () => {
   console.log(`Server đang chạy tại http://${CONTAINER_IP}:${CONTAINER_PORT}`);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Có thể thêm logic để ghi log hoặc xử lý lỗi tại đây
+});
