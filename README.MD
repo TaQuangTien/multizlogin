@@ -1,17 +1,9 @@
-##Build Docker Image:
-
-###Mở terminal tại thư mục chứa Dockerfile và chạy lệnh:
-
+1. Tải toàn bộ mã nguồn về để trong thư mục
+2. Mở Terminal tại thư mục chứa (có Dockerfile) và chạy lệnh:
+```CLI
 docker build -t zalo-server .
-Chạy Docker Container:
-
+```
+3. Chạy
 ###Sau khi build xong, bạn có thể chạy container bằng lệnh:
 
-docker run -p 3000:3000 zalo-server
-
-
-## Push to docker hub
-
-docker build -t zalo-server .
-docker tag zalo-server cangphamdocker/zalo-server:latest
-docker push cangphamdocker/zalo-server:latest
+docker run -p 3080:3080 zalo-server
