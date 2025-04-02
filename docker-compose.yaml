@@ -3,7 +3,8 @@ services:
   zalo-server:
     image: cangphamdocker/zalo-server:latest
     ports:
-      - "3000:3000"
+      - "${CONTAINER_PORT:-3080}:${CONTAINER_PORT:-3080}" # Ánh xạ cổng động cho Express
+      - "${CONTAINER_PORT_WS:-3001}:${CONTAINER_PORT_WS:-3001}" # Ánh xạ cổng động cho WebSocket
     volumes:
       - type: bind
         source: ./zalo_data
@@ -18,7 +19,9 @@ services:
         target: /app/webhook-config.json
         consistency: consistent
     environment:
-      - PORT=3000
+      - CONTAINER_IP=0.0.0.0
+      - CONTAINER_PORT=3080
+      - CONTAINER_PORT_WS=3001 # Biến môi trường cho WebSocket
       - MESSAGE_WEBHOOK_URL=${MESSAGE_WEBHOOK_URL:-/app/webhook-config.json}
       - GROUP_EVENT_WEBHOOK_URL=${GROUP_EVENT_WEBHOOK_URL:-/app/webhook-config.json}
       - REACTION_WEBHOOK_URL=${REACTION_WEBHOOK_URL:-/app/webhook-config.json}
