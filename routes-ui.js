@@ -157,45 +157,57 @@ router.get('/login', (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  try {
-    const { proxy } = req.body;
-    const qrCodeImage = await loginZaloAccount(proxy || null, null);
-    const containerIp = process.env.CONTAINER_IP || 'localhost'; // Lấy CONTAINER_IP từ biến môi trường
-    const wsPort = process.env.CONTAINER_PORT_WS || 3001; // Lấy CONTAINER_PORT_WS từ biến môi trường
-    res.send(`
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Quét mã QR</title>
-        </head>
-        <body>
-          <h2>Quét mã QR để đăng nhập</h2>
-          <img src="${qrCodeImage}" alt="QR Code"/>
-          <script>
-			const socket = new WebSocket('ws://${containerIp}:${wsPort}');
-			socket.onmessage = function(event) {
-				console.log('Received:', event.data);
-				if (event.data === 'login_success') {
-					alert('Đăng nhập thành công. Tự động chuyển về Home sau 5 giây');
-					setTimeout(function() {
-						window.location.href = '/home';
-					}, 5000); // 5000 milliseconds = 5 giây
-				}
-			};
-			socket.onerror = function(error) {
-				alert('Thất bại. Hãy thử lại sau. Tự động về Home sau 5 giây');
-				setTimeout(function() {
-						window.location.href = '/home';
-					}, 5000); // 5000 milliseconds = 5 giây
-				console.error('WebSocket error:', error);
-			};
-		  </script>
-        </body>
-      </html>
-    `);
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+    const MAX_RETRIES = 3; // Số lần thử lại tối đa
+    let retryCount = 0;
+
+    while (retryCount < MAX_RETRIES) {
+        try {
+            const { proxy } = req.body;
+            const qrCodeImage = await loginZaloAccount(proxy || null, null);
+            const containerIp = process.env.CONTAINER_IP || 'localhost';
+            const wsPort = process.env.CONTAINER_PORT_WS || 3001;
+            res.send(`
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Quét mã QR</title>
+                    </head>
+                    <body>
+                        <h2>Quét mã QR để đăng nhập</h2>
+                        <img src="${qrCodeImage}" alt="QR Code"/>
+                        <script>
+                            const socket = new WebSocket('ws://${containerIp}:${wsPort}');
+                            socket.onmessage = function(event) {
+                                console.log('Received:', event.data);
+                                if (event.data === 'login_success') {
+                                    alert('Đăng nhập thành công. Tự động chuyển về Home sau 5 giây');
+                                    setTimeout(function() {
+                                        window.location.href = '/home';
+                                    }, 5000);
+                                }
+                            };
+                            socket.onerror = function(error) {
+                                alert('Thất bại. Hãy thử lại sau. Tự động về Home sau 5 giây');
+                                setTimeout(function() {
+                                    window.location.href = '/home';
+                                }, 5000);
+                                console.error('WebSocket error:', error);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `);
+            return; // Thoát nếu thành công
+        } catch (error) {
+            if (error.message.includes('QR code đã hết hạn') && retryCount < MAX_RETRIES - 1) {
+                console.log(`QR code hết hạn, thử lại lần ${retryCount + 1}/${MAX_RETRIES}`);
+                retryCount++;
+                continue;
+            }
+            res.status(500).json({ success: false, error: error.message });
+            return;
+        }
+    }
 });
 
 router.get('/updateWebhookForm', (req, res) => {
