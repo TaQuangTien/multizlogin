@@ -8,10 +8,9 @@ import { WebSocketServer } from 'ws';
 const app = express();
 const CONTAINER_IP = process.env.CONTAINER_IP || '0.0.0.0'; // Dùng để hiển thị hoặc cho client
 const LISTEN_IP = '0.0.0.0'; // Luôn lắng nghe trên tất cả giao diện
-const CONTAINER_PORT = process.env.CONTAINER_PORT || 3080;
-const CONTAINER_PORT_WS = process.env.CONTAINER_PORT_WS || 3001; // Biến môi trường cho WebSocket
+const CONTAINER_PORT = process.env.CONTAINER_PORT || 3000;
 
-const wss = new WebSocketServer({ port: CONTAINER_PORT_WS, host: LISTEN_IP });
+const wss = new WebSocketServer({ port: 3000, host: LISTEN_IP });
 
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
