@@ -20,8 +20,5 @@ services:
     environment:
       - CONTAINER_IP=0.0.0.0
       - CONTAINER_PORT=3000
-      - MESSAGE_WEBHOOK_URL=${MESSAGE_WEBHOOK_URL:-/app/webhook-config.json}
-      - GROUP_EVENT_WEBHOOK_URL=${GROUP_EVENT_WEBHOOK_URL:-/app/webhook-config.json}
-      - REACTION_WEBHOOK_URL=${REACTION_WEBHOOK_URL:-/app/webhook-config.json}
     restart: always
     working_dir: /app
