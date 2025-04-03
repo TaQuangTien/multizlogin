@@ -3,14 +3,18 @@ import express from 'express';
 import routes from './routes.js';
 import fs from 'fs';
 import { zaloAccounts, loginZaloAccount } from './api/zalo/zalo.js';
+import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
 const app = express();
-const CONTAINER_IP = process.env.CONTAINER_IP || '0.0.0.0'; // Dùng để hiển thị hoặc cho client
-const LISTEN_IP = '0.0.0.0'; // Luôn lắng nghe trên tất cả giao diện
+const CONTAINER_IP = process.env.CONTAINER_IP || '0.0.0.0';
+const LISTEN_IP = '0.0.0.0';
 const CONTAINER_PORT = process.env.CONTAINER_PORT || 3000;
 
-const wss = new WebSocketServer({ port: 3000, host: LISTEN_IP });
+// Create HTTP server with Express
+const server = createServer(app);
+// Attach WebSocket server to the same HTTP server
+const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
@@ -37,7 +41,6 @@ loadWebhookConfig();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use('/', routes);
 
 export function broadcastLoginSuccess() {
@@ -68,11 +71,11 @@ if (fs.existsSync(cookiesDir)) {
   }
 }
 
-app.listen(CONTAINER_PORT, LISTEN_IP, () => {
+// Use server.listen instead of app.listen
+server.listen(CONTAINER_PORT, LISTEN_IP, () => {
   console.log(`Server đang chạy tại http://${CONTAINER_IP}:${CONTAINER_PORT}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Có thể thêm logic để ghi log hoặc xử lý lỗi tại đây
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
