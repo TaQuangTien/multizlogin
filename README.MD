@@ -6,4 +6,6 @@ docker build -t zalo-server .
 3. Chạy
 ###Sau khi build xong, bạn có thể chạy container bằng lệnh:
 
-docker run -p 3080:3080 zalo-server
+docker run -p 3000:3000 zalo-server
+
+4. Truy cập DockerIP:3000 để sử dụng
