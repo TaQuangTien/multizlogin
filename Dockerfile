@@ -14,8 +14,7 @@ RUN npm install
 COPY . .
 
 # Expose cổng mà server lắng nghe
-EXPOSE 3080
-EXPOSE 3001
+EXPOSE 3000
 
 # Khởi chạy ứng dụng
 CMD ["npm", "start"]
