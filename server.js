@@ -9,7 +9,8 @@ import { WebSocketServer } from 'ws';
 const app = express();
 const CONTAINER_IP = process.env.CONTAINER_IP || '0.0.0.0';
 const LISTEN_IP = '0.0.0.0';
-const CONTAINER_PORT = process.env.CONTAINER_PORT || 3000;
+const CONTAINER_PORT = process.env.CONTAINER_PORT || 3000; // Only for display
+const INTERNAL_PORT = 3000; // Actual listening port
 
 // Create HTTP server with Express
 const server = createServer(app);
@@ -21,19 +22,28 @@ wss.on('connection', (ws) => {
   ws.on('close', () => console.log('Client disconnected'));
 });
 
+wss.on('error', (error) => {
+  console.error('WebSocket error:', error);
+});
+
 let webhookConfig = {};
 
 function loadWebhookConfig() {
-  const messageWebhookUrl = process.env.MESSAGE_WEBHOOK_URL;
-  const groupEventWebhookUrl = process.env.GROUP_EVENT_WEBHOOK_URL;
-  const reactionWebhookUrl = process.env.REACTION_WEBHOOK_URL;
+  try {
+    const messageWebhookUrl = process.env.MESSAGE_WEBHOOK_URL;
+    const groupEventWebhookUrl = process.env.GROUP_EVENT_WEBHOOK_URL;
+    const reactionWebhookUrl = process.env.REACTION_WEBHOOK_URL;
 
-  if (messageWebhookUrl && groupEventWebhookUrl && reactionWebhookUrl) {
-    webhookConfig = {
-      messageWebhookUrl,
-      groupEventWebhookUrl,
-      reactionWebhookUrl,
-    };
+    if (messageWebhookUrl && groupEventWebhookUrl && reactionWebhookUrl) {
+      webhookConfig = {
+        messageWebhookUrl,
+        groupEventWebhookUrl,
+        reactionWebhookUrl,
+      };
+    }
+    console.log('Webhook config loaded:', webhookConfig);
+  } catch (error) {
+    console.error('Error in loadWebhookConfig:', error);
   }
 }
 
@@ -51,10 +61,21 @@ export function broadcastLoginSuccess() {
   });
 }
 
-const cookiesDir = './cookies';
-if (fs.existsSync(cookiesDir)) {
-  const cookieFiles = fs.readdirSync(cookiesDir);
-  if (zaloAccounts.length < cookieFiles.length) {
+// Async wrapper for cookie loading
+async function loadCookies() {
+  try {
+    const cookiesDir = './cookies';
+    if (!fs.existsSync(cookiesDir)) {
+      console.log('Cookies directory not found, skipping cookie loading');
+      return;
+    }
+
+    const cookieFiles = fs.readdirSync(cookiesDir);
+    if (zaloAccounts.length >= cookieFiles.length) {
+      console.log('No new cookies to load');
+      return;
+    }
+
     console.log('Đang đăng nhập lại từ cookie...');
     for (const file of cookieFiles) {
       if (file.startsWith('cred_') && file.endsWith('.json')) {
@@ -68,14 +89,36 @@ if (fs.existsSync(cookiesDir)) {
         }
       }
     }
+  } catch (error) {
+    console.error('Error in loadCookies:', error);
   }
 }
 
-// Use server.listen instead of app.listen
-server.listen(CONTAINER_PORT, LISTEN_IP, () => {
-  console.log(`Server đang chạy tại http://${CONTAINER_IP}:${CONTAINER_PORT}`);
-});
+// Start server after loading cookies
+async function startServer() {
+  try {
+    await loadCookies();
+    
+    server.listen(INTERNAL_PORT, LISTEN_IP, () => {
+      console.log(`Server đang chạy tại http://${CONTAINER_IP}:${CONTAINER_PORT}`);
+      console.log(`Actually listening on port ${INTERNAL_PORT}`);
+    });
+
+    server.on('error', (error) => {
+      console.error('Server error:', error);
+    });
+  } catch (error) {
+    console.error('Error starting server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
 });
