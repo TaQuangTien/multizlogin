@@ -26,29 +26,6 @@ wss.on('error', (error) => {
   console.error('WebSocket error:', error);
 });
 
-let webhookConfig = {};
-
-function loadWebhookConfig() {
-  try {
-    const messageWebhookUrl = process.env.MESSAGE_WEBHOOK_URL;
-    const groupEventWebhookUrl = process.env.GROUP_EVENT_WEBHOOK_URL;
-    const reactionWebhookUrl = process.env.REACTION_WEBHOOK_URL;
-
-    if (messageWebhookUrl && groupEventWebhookUrl && reactionWebhookUrl) {
-      webhookConfig = {
-        messageWebhookUrl,
-        groupEventWebhookUrl,
-        reactionWebhookUrl,
-      };
-    }
-    console.log('Webhook config loaded:', webhookConfig);
-  } catch (error) {
-    console.error('Error in loadWebhookConfig:', error);
-  }
-}
-
-loadWebhookConfig();
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', routes);
