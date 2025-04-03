@@ -165,7 +165,7 @@ router.post('/login', async (req, res) => {
             const { proxy } = req.body;
             const qrCodeImage = await loginZaloAccount(proxy || null, null);
             const containerIp = process.env.CONTAINER_IP || 'localhost';
-            const wsPort = process.env.CONTAINER_PORT_WS || 3001;
+            const wsPort = process.env.CONTAINER_PORT || 3000;
             res.send(`
                     <html>
                         <head>
