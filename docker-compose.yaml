@@ -3,8 +3,7 @@ services:
   zalo-server:
     image: tienta/zalo-server:latest
     ports:
-      - "${CONTAINER_PORT:-3080}:${CONTAINER_PORT:-3080}" # Ánh xạ cổng động cho Express
-      - "${CONTAINER_PORT_WS:-3001}:${CONTAINER_PORT_WS:-3001}" # Ánh xạ cổng động cho WebSocket
+      - "${CONTAINER_PORT:-3000}:${CONTAINER_PORT:-3000}" # Ánh xạ cổng động cho Express
     volumes:
       - type: bind
         source: ./zalo_data
@@ -20,8 +19,7 @@ services:
         consistency: consistent
     environment:
       - CONTAINER_IP=0.0.0.0
-      - CONTAINER_PORT=3080
-      - CONTAINER_PORT_WS=3001 # Biến môi trường cho WebSocket
+      - CONTAINER_PORT=3000
       - MESSAGE_WEBHOOK_URL=${MESSAGE_WEBHOOK_URL:-/app/webhook-config.json}
       - GROUP_EVENT_WEBHOOK_URL=${GROUP_EVENT_WEBHOOK_URL:-/app/webhook-config.json}
       - REACTION_WEBHOOK_URL=${REACTION_WEBHOOK_URL:-/app/webhook-config.json}
