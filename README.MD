@@ -1,4 +1,15 @@
+Miễn trừ trách nhiệm:
+```text
+Dự án có sử dụng - ZCA-JS
+Là một thư viện cung cấp các API (unofficial) hỗ trợ bạn xây dựng 1 bot chat Zalo bằng chính tài khoản cá nhân của bạn.
+
+Lưu ý: việc sử dụng thư viện này đồng nghĩa với việc bạn đang làm trái với chính sách của Zalo và nó có thể khiến cho tài khoản của bạn bị vô hiệu hóa. Chúng tôi sẽ không chịu trách nhiệm nếu điều đó xảy ra, vậy nên hãy cân nhắc trước khi sử dụng.
+```
+
+A- CÀI ĐẶT
+
 1. Tải toàn bộ mã nguồn về để trong thư mục (multizlogin)
+
 2. Mở Terminal tại thư mục (multizlogin) và chạy lệnh:
 ```CLI
 docker build -t zalo-server .
@@ -7,6 +18,22 @@ docker build -t zalo-server .
 ```CLI
 docker-compose up -d
 ```
-4. Truy cập DockerIP:3000 để sử dụng
+4. Truy cập localhost:3000 để sử dụng
+
+5. Nếu chạy Docker trên NAS hay VPS thì đặt biến môi trường:
+CONTAINER_IP=xxx.xxx.xxx.xxx
+CONTAINER_PORT=yyyy
+và ánh xạ port "yyyy:3000"
+
+
+B- SỬ DỤNG
+
+1. Cập nhật Webhook (POST) - copy từ n8n
+2. Bấm Đăng nhập qua QR Code
+3. Thêm Proxy nếu cần và Bấm đăng nhập
+4. Dùng Zalo quét mã QR hiện ra để đăng nhập
+5. Sau khi đăng nhập thành công, mọi sự kiện sẽ được đẩy về Webhook
+6. Đọc tài liệu API để biết cách gửi Message, Photo, Sticker,...
 
 Credit: Cang Pham | https://www.facebook.com/share/p/1ADmjWHWE7/
+Modified: TienTa
