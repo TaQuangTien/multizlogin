@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   zalo-server:
-    image: tienta/zalo-server:latest
+    image: zalo-server:latest
     ports:
       - "${CONTAINER_PORT:-3000}:${CONTAINER_PORT:-3000}" # Ánh xạ cổng động cho Express
     volumes:
