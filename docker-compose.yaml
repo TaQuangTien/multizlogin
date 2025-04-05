@@ -4,21 +4,5 @@ services:
     image: zalo-server:latest
     ports:
       - "${CONTAINER_PORT:-3000}:${CONTAINER_PORT:-3000}" # Ánh xạ cổng động cho Express
-    volumes:
-      - type: bind
-        source: ./zalo_data
-        target: /app/cookies
-        consistency: consistent
-      - type: bind
-        source: ./zalo_data/proxies.json
-        target: /app/proxies.json
-        consistency: consistent
-      - type: bind
-        source: ./zalo_data/webhook-config.json
-        target: /app/webhook-config.json
-        consistency: consistent
-    environment:
-      - CONTAINER_IP=0.0.0.0
-      - CONTAINER_PORT=3000
     restart: always
     working_dir: /app
