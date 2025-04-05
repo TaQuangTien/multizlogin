@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { zaloAccounts, loginZaloAccount } from './api/zalo/zalo.js';
 import { proxyService } from './proxyService.js';
-import { broadcastLoginSuccess } from './server.js';
+import { broadcastLoginSuccess, wss, server } from './server.js';
 
 const router = express.Router();
 
@@ -26,15 +26,30 @@ router.get('/', (req, res) => {
 router.get('/home', (req, res) => {
   let accountsHtml = '<p>Chưa có tài khoản nào đăng nhập</p>';
   if (zaloAccounts.length > 0) {
-    accountsHtml = '<table border="1"><thead><tr><th>Own ID</th><th>Phone Number</th><th>Proxy</th></tr></thead><tbody>';
+    accountsHtml = '<table border="1"><thead><tr><th>Own ID</th><th>Phone Number</th><th>Proxy</th><th>Hành động</th></tr></thead><tbody>';
     zaloAccounts.forEach((account) => {
-      accountsHtml += `<tr><td>${account.ownId}</td><td>${account.phoneNumber || 'N/A'}</td><td>${
-        account.proxy || 'Không có'
-      }</td></tr>`;
+      accountsHtml += `
+        <tr>
+          <td>${account.ownId}</td>
+          <td>${account.phoneNumber || 'N/A'}</td>
+          <td>${account.proxy || 'Không có'}</td>
+          <td>
+            <form action="/deleteAccount" method="POST" style="display:inline;">
+              <input type="hidden" name="ownId" value="${account.ownId}">
+              <button type="submit" class="button delete-btn" onclick="return confirm('Bạn có chắc muốn xóa tài khoản ${account.ownId}?');">Xóa</button>
+            </form>
+          </td>
+        </tr>`;
     });
     accountsHtml += '</tbody></table>';
   }
-  accountsHtml += '<br><a href="/login" class="button">Đăng nhập qua QR Code</a>';
+  accountsHtml += `
+    <br>
+    <a href="/login" class="button">Đăng nhập qua QR Code</a>
+    <form action="/restartApp" method="POST" style="display:inline;">
+      <button type="submit" class="button restart-btn" onclick="return confirm('Bạn có chắc muốn khởi động lại ứng dụng? Trang sẽ không phản hồi trong vài giây.');">Khởi động lại ứng dụng</button>
+    </form>
+  `;
 
   const proxies = proxyService.getPROXIES();
   let proxiesHtml = '<p>Chưa có proxy nào</p>';
@@ -98,6 +113,10 @@ router.get('/home', (req, res) => {
           border-radius: 5px; 
         }
         .button:hover { background-color: #2980b9; }
+        .delete-btn { background-color: #e74c3c; }
+        .delete-btn:hover { background-color: #c0392b; }
+        .restart-btn { background-color: #f39c12; }
+        .restart-btn:hover { background-color: #e67e22; }
         ul { line-height: 1.6; }
         table { border-collapse: collapse; width: 100%; max-width: 800px; margin-top: 10px; }
         th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
@@ -294,6 +313,115 @@ router.post('/proxies', (req, res) => {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+});
+
+// Route xử lý xóa tài khoản
+router.post('/deleteAccount', (req, res) => {
+  const { ownId } = req.body;
+  if (!ownId) {
+    return res.status(400).json({ success: false, error: 'ownId không hợp lệ' });
+  }
+
+  const accountIndex = zaloAccounts.findIndex((acc) => acc.ownId === ownId);
+  if (accountIndex === -1) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy tài khoản' });
+  }
+
+  const account = zaloAccounts[accountIndex];
+  if (account.api && account.api.listener) {
+    account.api.listener.stop();
+  }
+
+  const cookieFile = path.join(__dirname, 'cookies', `cred_${ownId}.json`);
+  if (fs.existsSync(cookieFile)) {
+    fs.unlinkSync(cookieFile);
+    console.log(`Đã xóa file cookie cho tài khoản ${ownId}`);
+  }
+
+  zaloAccounts.splice(accountIndex, 1);
+  console.log(`Đã xóa tài khoản ${ownId} khỏi hệ thống`);
+
+  if (account.proxy) {
+    proxyService.removeAccountFromProxy(account.proxy, ownId);
+  }
+
+  res.send(`
+    <html>
+      <body>
+        <script>window.location.href = '/home';</script>
+      </body>
+    </html>
+  `);
+});
+
+// Route xử lý khởi động lại ứng dụng
+router.post('/restartApp', (req, res) => {
+  console.log('Bắt đầu khởi động lại ứng dụng...');
+
+  // 1. Dừng tất cả listener của zca-js
+  zaloAccounts.forEach((account) => {
+    if (account.api && account.api.listener) {
+      account.api.listener.stop();
+    }
+  });
+
+  // 2. Đóng WebSocket server
+  wss.clients.forEach((client) => {
+    if (client.readyState === client.OPEN) {
+      client.close();
+    }
+  });
+  wss.close(() => {
+    console.log('WebSocket server đã đóng');
+  });
+
+  // 3. Đóng và khởi động lại HTTP server
+  server.close(async (err) => {
+    if (err) {
+      console.error('Lỗi khi đóng HTTP server:', err);
+      res.status(500).send('Lỗi khi khởi động lại ứng dụng');
+      return;
+    }
+    console.log('HTTP server đã đóng');
+
+    // 4. Xóa danh sách tài khoản hiện tại
+    while (zaloAccounts.length > 0) {
+      zaloAccounts.pop();
+    }
+
+    // 5. Tải lại tài khoản từ cookies
+    const cookiesDir = path.join(__dirname, 'cookies');
+    if (fs.existsSync(cookiesDir)) {
+      const cookieFiles = fs.readdirSync(cookiesDir);
+      for (const file of cookieFiles) {
+        if (file.startsWith('cred_') && file.endsWith('.json')) {
+          const ownId = file.substring(5, file.length - 5);
+          try {
+            const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
+            await loginZaloAccount(null, cookie); // Sử dụng await trong async context
+            console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie`);
+          } catch (error) {
+            console.error(`Lỗi khi đăng nhập lại tài khoản ${ownId}:`, error);
+          }
+        }
+      }
+    }
+
+    // 6. Khởi động lại HTTP server
+    server.listen(3000, '0.0.0.0', () => {
+      console.log('HTTP server đã khởi động lại');
+      res.send(`
+        <html>
+          <body>
+            <script>
+              alert('Ứng dụng đã được khởi động lại thành công!');
+              window.location.href = '/home';
+            </script>
+          </body>
+        </html>
+      `);
+    });
+  });
 });
 
 export default router;
