@@ -7,15 +7,11 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
 const app = express();
-const CONTAINER_IP = process.env.CONTAINER_IP || '0.0.0.0';
 const LISTEN_IP = '0.0.0.0';
-const CONTAINER_PORT = process.env.CONTAINER_PORT || 3000; // Only for display
-const INTERNAL_PORT = 3000; // Actual listening port
+const INTERNAL_PORT = 3000;
 
-// Create HTTP server with Express
-const server = createServer(app);
-// Attach WebSocket server to the same HTTP server
-const wss = new WebSocketServer({ server });
+export const server = createServer(app); // Export server
+export const wss = new WebSocketServer({ server }); // Export wss
 
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
@@ -77,7 +73,6 @@ async function startServer() {
     await loadCookies();
     
     server.listen(INTERNAL_PORT, LISTEN_IP, () => {
-      console.log(`Server đang chạy tại http://${CONTAINER_IP}:${CONTAINER_PORT}`);
       console.log(`Actually listening on port ${INTERNAL_PORT}`);
     });
 
