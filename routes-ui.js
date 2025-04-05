@@ -164,8 +164,6 @@ router.post('/login', async (req, res) => {
         try {
             const { proxy } = req.body;
             const qrCodeImage = await loginZaloAccount(proxy || null, null);
-            const containerIp = process.env.CONTAINER_IP || 'localhost';
-            const wsPort = process.env.CONTAINER_PORT || 3000;
             res.send(`
                     <html>
                         <head>
@@ -176,19 +174,9 @@ router.post('/login', async (req, res) => {
                             <h2>Quét mã QR để đăng nhập</h2>
                             <img id="qrCode" src="${qrCodeImage}" alt="QR Code"/>
                             <script>
-                                const socket = new WebSocket('ws://${containerIp}:${wsPort}');
-                                socket.onmessage = function(event) {
-                                    console.log('Received:', event.data);
-                                    if (event.data === 'login_success') {
-                                        alert('Đăng nhập thành công. Tự động chuyển về Home sau 5 giây');
-                                        setTimeout(function() {
-                                            window.location.href = '/home';
-                                        }, 5000);
-                                    } else if (event.data === 'qr_expired') {
-                                        alert('Mã QR đã hết hạn.');
-                                        document.getElementById('retryButton').style.display = 'block';
-                                    }
-                                };
+                                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                                const host = window.location.host;
+                                const socket = new WebSocket(protocol + '//' + host);
                                 socket.onmessage = function(event) {
                                     console.log('Received:', event.data);
                                     if (event.data === 'login_success') {
@@ -208,7 +196,7 @@ router.post('/login', async (req, res) => {
             return; // Thoát nếu thành công
         } catch (error) {
             if (error.message.includes('QR code đã hết hạn') && retryCount < MAX_RETRIES - 1) {
-                console.log(`QR code hết hạn, thử lại lần ${retryCount + 1}/${MAX_RETRIES}`);
+                console.log(`QR code hết hạn,试 lại lần ${retryCount + 1}/${MAX_RETRIES}`);
                 retryCount++;
                 continue;
             }
