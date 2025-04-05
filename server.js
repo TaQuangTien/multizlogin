@@ -1,96 +1,80 @@
-// server.js
-import express from 'express';
-import routes from './routes.js';
+// proxyService.js
 import fs from 'fs';
-import { zaloAccounts, loginZaloAccount } from './api/zalo/zalo.js';
-import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const app = express();
-const LISTEN_IP = '0.0.0.0';
-const INTERNAL_PORT = 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const proxiesFilePath = path.join(__dirname, 'proxies.json');
 
-export const server = createServer(app); // Export server
-export const wss = new WebSocketServer({ server }); // Export wss
+const MAX_ACCOUNTS_PER_PROXY = 3;
 
-wss.on('connection', (ws) => {
-  console.log('Client connected to WebSocket');
-  ws.on('close', () => console.log('Client disconnected'));
-});
-
-wss.on('error', (error) => {
-  console.error('WebSocket error:', error);
-});
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/', routes);
-
-export function broadcastLoginSuccess() {
-  wss.clients.forEach((client) => {
-    if (client.readyState === client.OPEN) {
-      client.send('login_success');
+class ProxyService {
+  constructor() {
+    this.RAW_PROXIES = [];
+    try {
+      const data = fs.readFileSync(proxiesFilePath, 'utf8');
+      this.RAW_PROXIES = JSON.parse(data);
+    } catch (err) {
+      console.error('Không thể đọc file proxies.json:', err);
+      this.RAW_PROXIES = [];
     }
-  });
-}
+    this.PROXIES = this.RAW_PROXIES.map((p) => ({ url: p, usedCount: 0, accounts: [] }));
+  }
 
-// Async wrapper for cookie loading
-async function loadCookies() {
-  try {
-    const cookiesDir = './cookies';
-    if (!fs.existsSync(cookiesDir)) {
-      console.log('Cookies directory not found, skipping cookie loading');
-      return;
-    }
-
-    const cookieFiles = fs.readdirSync(cookiesDir);
-    if (zaloAccounts.length >= cookieFiles.length) {
-      console.log('No new cookies to load');
-      return;
-    }
-
-    console.log('Đang đăng nhập lại từ cookie...');
-    for (const file of cookieFiles) {
-      if (file.startsWith('cred_') && file.endsWith('.json')) {
-        const ownId = file.substring(5, file.length - 5);
-        try {
-          const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
-          await loginZaloAccount(null, cookie);
-          console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie.`);
-        } catch (error) {
-          console.error(`Lỗi khi đăng nhập lại tài khoản ${ownId}:`, error);
-        }
+  getAvailableProxyIndex() {
+    for (let i = 0; i < this.PROXIES.length; i++) {
+      if (this.PROXIES[i].usedCount < MAX_ACCOUNTS_PER_PROXY) {
+        return i;
       }
     }
-  } catch (error) {
-    console.error('Error in loadCookies:', error);
+    return -1;
+  }
+
+  addProxy(proxyUrl) {
+    try {
+      new URL(proxyUrl);
+      const newProxy = { url: proxyUrl, usedCount: 0, accounts: [] };
+      this.PROXIES.push(newProxy);
+      this.RAW_PROXIES.push(proxyUrl);
+      fs.writeFileSync(proxiesFilePath, JSON.stringify(this.RAW_PROXIES, null, 2));
+      return newProxy;
+    } catch (err) {
+      throw new Error('Proxy URL không hợp lệ');
+    }
+  }
+
+  removeProxy(proxyUrl) {
+    const index = this.PROXIES.findIndex((p) => p.url === proxyUrl);
+    if (index === -1) {
+      throw new Error('Không tìm thấy proxy');
+    }
+    this.PROXIES.splice(index, 1);
+    const rawIndex = this.RAW_PROXIES.indexOf(proxyUrl);
+    if (rawIndex !== -1) {
+      this.RAW_PROXIES.splice(rawIndex, 1);
+    }
+    fs.writeFileSync(proxiesFilePath, JSON.stringify(this.RAW_PROXIES, null, 2));
+    return true;
+  }
+
+  getPROXIES() {
+    return this.PROXIES;
+  }
+  
+  removeAccountFromProxy(proxyUrl, ownId) {
+    const proxy = this.PROXIES.find((p) => p.url === proxyUrl);
+    if (proxy) {
+      const accountIndex = proxy.accounts.findIndex((acc) => acc.ownId === ownId);
+      if (accountIndex !== -1) {
+        proxy.accounts.splice(accountIndex, 1);
+        proxy.usedCount--;
+        console.log(`Đã xóa tài khoản ${ownId} khỏi proxy ${proxyUrl}`);
+      }
+    }
   }
 }
 
-// Start server after loading cookies
-async function startServer() {
-  try {
-    await loadCookies();
-    
-    server.listen(INTERNAL_PORT, LISTEN_IP, () => {
-      console.log(`Actually listening on port ${INTERNAL_PORT}`);
-    });
+const proxyService = new ProxyService();
 
-    server.on('error', (error) => {
-      console.error('Server error:', error);
-    });
-  } catch (error) {
-    console.error('Error starting server:', error);
-    process.exit(1);
-  }
-}
-
-startServer();
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
+export { proxyService };
