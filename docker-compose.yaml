@@ -3,6 +3,6 @@ services:
   zalo-server:
     image: zalo-server:latest
     ports:
-      - "${CONTAINER_PORT:-3000}:${CONTAINER_PORT:-3000}" # Ánh xạ cổng động cho Express
+      - "3000:3000" # Ánh xạ cổng động cho Express
     restart: always
     working_dir: /app
