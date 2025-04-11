@@ -12,14 +12,26 @@ export function setupEventListeners(api, loginResolve) {
   api.listener.on('message', (msg) => {
     const messageWebhookUrl = getWebhookUrl('messageWebhookUrl');
     if (messageWebhookUrl) {
-      triggerN8nWebhook(msg, messageWebhookUrl);
+      const ownId = api.getOwnId(); // Lấy ownId từ api
+      if (ownId) {
+        triggerN8nWebhook({ ...msg, AccountID: ownId }, messageWebhookUrl); // Thêm AccountID vào dữ liệu
+      } else {
+        console.error('Không thể lấy AccountID cho sự kiện message');
+        triggerN8nWebhook(msg, messageWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
+      }
     }
   });
 
   api.listener.on('group_event', (data) => {
     const groupEventWebhookUrl = getWebhookUrl('groupEventWebhookUrl');
     if (groupEventWebhookUrl) {
-      triggerN8nWebhook(data, groupEventWebhookUrl);
+      const ownId = api.getOwnId(); // Lấy ownId từ api
+      if (ownId) {
+        triggerN8nWebhook({ ...data, AccountID: ownId }, groupEventWebhookUrl); // Thêm AccountID vào dữ liệu
+      } else {
+        console.error('Không thể lấy AccountID cho sự kiện group_event');
+        triggerN8nWebhook(data, groupEventWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
+      }
     }
   });
 
@@ -27,7 +39,13 @@ export function setupEventListeners(api, loginResolve) {
     const reactionWebhookUrl = getWebhookUrl('reactionWebhookUrl');
     console.log('Nhận reaction:', reaction);
     if (reactionWebhookUrl) {
-      triggerN8nWebhook(reaction, reactionWebhookUrl);
+      const ownId = api.getOwnId(); // Lấy ownId từ api
+      if (ownId) {
+        triggerN8nWebhook({ ...reaction, AccountID: ownId }, reactionWebhookUrl); // Thêm AccountID vào dữ liệu
+      } else {
+        console.error('Không thể lấy AccountID cho sự kiện reaction');
+        triggerN8nWebhook(reaction, reactionWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
+      }
     }
   });
 
@@ -43,11 +61,11 @@ export function setupEventListeners(api, loginResolve) {
   });
 
   api.listener.onError((error) => {
-      console.error('Error:', error);
-      if (error.message.includes('QR expired')) {
-          console.log('QR code đã hết hạn, thông báo cho client...');
-          broadcastLoginSuccess('qr_expired'); // Thông báo qua WebSocket
-      }
+    console.error('Error:', error);
+    if (error.message.includes('QR expired')) {
+      console.log('QR code đã hết hạn, thông báo cho client...');
+      broadcastLoginSuccess('qr_expired');
+    }
   });
 }
 
