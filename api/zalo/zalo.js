@@ -3,6 +3,7 @@ import { Zalo, ThreadType } from 'zca-js';
 import { proxyService } from '../../proxyService.js';
 import { setupEventListeners } from '../../eventListeners.js';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { saveImage, removeImage } from '../../helpers.js';
 import nodefetch from 'node-fetch';
 import fs from 'fs';
 
