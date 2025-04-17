@@ -1,10 +1,17 @@
-// server.js
+import dotenv from 'dotenv';
 import express from 'express';
 import routes from './routes.js';
 import fs from 'fs';
 import { zaloAccounts, loginZaloAccount } from './api/zalo/zalo.js';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
+import fileUpload from 'express-fileupload';
+import session from 'express-session';
+
+
+
+// Load biến môi trường từ file .env
+dotenv.config();
 
 const app = express();
 const LISTEN_IP = '0.0.0.0';
@@ -22,6 +29,13 @@ wss.on('error', (error) => {
   console.error('WebSocket error:', error);
 });
 
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
+}));
+app.use(fileUpload());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', routes);

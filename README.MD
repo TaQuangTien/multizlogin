@@ -14,16 +14,13 @@ A- CÀI ĐẶT
 ```CLI
 docker build -t zalo-server .
 ```
-3. Sau khi build xong, bạn có thể chạy container bằng lệnh:
-```CLI
-docker-compose up -d
-```
-4. Truy cập localhost:3000 để sử dụng
 
-5. Nếu chạy Docker trên NAS hay VPS thì đặt biến môi trường:
-CONTAINER_IP=xxx.xxx.xxx.xxx
-CONTAINER_PORT=yyyy
-và ánh xạ port "yyyy:3000"
+3. Sau khi build xong, bạn có thể tạo container bằng lệnh:
+```CLI
+docker run -d   --name zalo-server-new   -p 3000:3000   -e ADMIN_USERNAME=admin   -e ADMIN_PASSWORD=admin   -e X_API_KEY=your-secret-api-key   -e SESSION_SECRET=your-secret zalo-server:latest
+```
+
+4. Truy cập container_ip:3000 để sử dụng
 
 
 B- SỬ DỤNG

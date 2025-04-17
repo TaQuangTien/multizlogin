@@ -25,18 +25,19 @@ export function getWebhookUrl(key) {
 
 export async function triggerN8nWebhook(msg, webhookUrl) {
     if (!webhookUrl) {
-        console.warn("Webhook URL is empty, skipping webhook trigger");
-        return false;
+      console.warn("Webhook URL is empty, skipping webhook trigger");
+      return false;
     }
-    
     try {
-        await axios.post(webhookUrl, msg, { headers: { 'Content-Type': 'application/json' } });
-        return true;
+      console.log(`Gửi webhook đến ${webhookUrl} với dữ liệu:`, msg); // Thêm log
+      await axios.post(webhookUrl, msg, { headers: { 'Content-Type': 'application/json' } });
+      console.log(`Webhook ${webhookUrl} gọi thành công`);
+      return true;
     } catch (error) {
-        console.error("Error sending webhook request:", error.message);
-        return false;
+      console.error(`Lỗi khi gửi webhook đến ${webhookUrl}:`, error.message, error.response?.data); // Log chi tiết
+      return false;
     }
-}
+  }
 
 export async function saveImage(url) {
     try {

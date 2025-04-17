@@ -1,5 +1,5 @@
 {
-  "messageWebhookUrl": "https://example.com/webhook/zalo-api",
-  "groupEventWebhookUrl": "https://example.com/webhook/zalo-api-group",
-  "reactionWebhookUrl": "https://example.com/webhook/zalo-api-reaction"
+  "messageWebhookUrl": "http://172.20.0.2:5678/webhook/123c9705-0bf4-437e-9b0e-cf3e02b046e2",
+  "groupEventWebhookUrl": "http://172.20.0.2:5678/webhook/123c9705-0bf4-437e-9b0e-cf3e02b046e2",
+  "reactionWebhookUrl": "http://172.20.0.2:5678/webhook/123c9705-0bf4-437e-9b0e-cf3e02b046e2"
 }

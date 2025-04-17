@@ -1,4 +1,3 @@
-// api/zalo/zalo.js
 import { Zalo, ThreadType } from 'zca-js';
 import { proxyService } from '../../proxyService.js';
 import { setupEventListeners } from '../../eventListeners.js';
@@ -6,9 +5,252 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { saveImage, removeImage } from '../../helpers.js';
 import nodefetch from 'node-fetch';
 import fs from 'fs';
+import path from 'path';
 
 export const zaloAccounts = [];
 
+// Ánh xạ MIME type sang phần mở rộng file
+const mimeToExtension = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif'
+};
+
+// Hàm lưu dữ liệu base64 thành file hình ảnh tạm
+async function saveBase64Image(base64Data, fileName) {
+    try {
+        // Tạo thư mục tmp nếu chưa tồn tại
+        const tmpDir = './tmp';
+        if (!fs.existsSync(tmpDir)) {
+            fs.mkdirSync(tmpDir, { recursive: true });
+        }
+
+        // Phân tích prefix để lấy MIME type
+        let base64String = base64Data;
+        let extension = '.png'; // Mặc định là PNG
+        const mimeMatch = base64Data.match(/^data:(image\/[a-z]+);base64,/);
+        if (mimeMatch) {
+            const mimeType = mimeMatch[1];
+            if (!mimeToExtension[mimeType]) {
+                throw new Error(`Định dạng hình ảnh không được hỗ trợ: ${mimeType}`);
+            }
+            extension = mimeToExtension[mimeType];
+            base64String = base64Data.replace(/^data:image\/\w+;base64,/, '');
+        } else {
+            console.warn('Không tìm thấy prefix MIME, sử dụng mặc định PNG');
+        }
+
+        const buffer = Buffer.from(base64String, 'base64');
+        const filePath = path.join(tmpDir, `${fileName}${extension}`);
+        fs.writeFileSync(filePath, buffer);
+        return filePath;
+    } catch (error) {
+        console.error('Lỗi khi lưu hình ảnh từ base64:', error);
+        return null;
+    }
+}
+
+// Hàm gửi một hình ảnh đến người dùng
+export async function sendImageToUser(req, res) {
+    try {
+        const { imagePath, imageData, threadId, ownId } = req.body;
+        if ((!imagePath && !imageData) || !threadId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePath hoặc imageData và threadId là bắt buộc' });
+        }
+
+        let imageFilePath;
+        const timestamp = Date.now();
+        if (imagePath) {
+            imageFilePath = await saveImage(imagePath);
+        } else if (imageData) {
+            imageFilePath = await saveBase64Image(imageData, `${timestamp}`);
+        }
+        if (!imageFilePath) {
+            return res.status(500).json({ success: false, error: 'Không thể lưu hình ảnh' });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: "",
+                attachments: [imageFilePath]
+            },
+            threadId,
+            ThreadType.User
+        ).catch(console.error);
+
+        removeImage(imageFilePath);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// Hàm gửi nhiều hình ảnh đến người dùng
+export async function sendImagesToUser(req, res) {
+    try {
+        const { imagePaths, imagesData, threadId, ownId } = req.body;
+        if ((!imagePaths && !imagesData) || !threadId || !ownId || 
+            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) || 
+            (imagesData && (!Array.isArray(imagesData) || imagesData.length === 0))) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths hoặc imagesData phải là mảng không rỗng và threadId là bắt buộc' });
+        }
+
+        const imageFiles = [];
+        const timestamp = Date.now();
+        if (imagePaths && Array.isArray(imagePaths)) {
+            for (const imagePath of imagePaths) {
+                const imageFilePath = await saveImage(imagePath);
+                if (!imageFilePath) {
+                    for (const path of imageFiles) {
+                        removeImage(path);
+                    }
+                    return res.status(500).json({ success: false, error: 'Không thể lưu một hoặc nhiều hình ảnh từ imagePaths' });
+                }
+                imageFiles.push(imageFilePath);
+            }
+        }
+        if (imagesData && Array.isArray(imagesData)) {
+            for (let i = 0; i < imagesData.length; i++) {
+                const imageFilePath = await saveBase64Image(imagesData[i], `${timestamp}_${i}`);
+                if (!imageFilePath) {
+                    for (const path of imageFiles) {
+                        removeImage(path);
+                    }
+                    return res.status(500).json({ success: false, error: 'Không thể lưu một hoặc nhiều hình ảnh từ imagesData' });
+                }
+                imageFiles.push(imageFilePath);
+            }
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: "",
+                attachments: imageFiles
+            },
+            threadId,
+            ThreadType.User
+        ).catch(console.error);
+
+        for (const imageFile of imageFiles) {
+            removeImage(imageFile);
+        }
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// Hàm gửi một hình ảnh đến nhóm
+export async function sendImageToGroup(req, res) {
+    try {
+        const { imagePath, imageData, threadId, ownId } = req.body;
+        if ((!imagePath && !imageData) || !threadId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePath hoặc imageData và threadId là bắt buộc' });
+        }
+
+        let imageFilePath;
+        const timestamp = Date.now();
+        if (imagePath) {
+            imageFilePath = await saveImage(imagePath);
+        } else if (imageData) {
+            imageFilePath = await saveBase64Image(imageData, `${timestamp}`);
+        }
+        if (!imageFilePath) {
+            return res.status(500).json({ success: false, error: 'Không thể lưu hình ảnh' });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: "",
+                attachments: [imageFilePath]
+            },
+            threadId,
+            ThreadType.Group
+        ).catch(console.error);
+
+        removeImage(imageFilePath);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// Hàm gửi nhiều hình ảnh đến nhóm
+export async function sendImagesToGroup(req, res) {
+    try {
+        const { imagePaths, imagesData, threadId, ownId } = req.body;
+        if ((!imagePaths && !imagesData) || !threadId || !ownId || 
+            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) || 
+            (imagesData && (!Array.isArray(imagesData) || imagesData.length === 0))) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths hoặc imagesData phải là mảng không rỗng và threadId là bắt buộc' });
+        }
+
+        const imageFiles = [];
+        const timestamp = Date.now();
+        if (imagePaths && Array.isArray(imagePaths)) {
+            for (const imagePath of imagePaths) {
+                const imageFilePath = await saveImage(imagePath);
+                if (!imageFilePath) {
+                    for (const path of imageFiles) {
+                        removeImage(path);
+                    }
+                    return res.status(500).json({ success: false, error: 'Không thể lưu một hoặc nhiều hình ảnh từ imagePaths' });
+                }
+                imageFiles.push(imageFilePath);
+            }
+        }
+        if (imagesData && Array.isArray(imagesData)) {
+            for (let i = 0; i < imagesData.length; i++) {
+                const imageFilePath = await saveBase64Image(imagesData[i], `${timestamp}_${i}`);
+                if (!imageFilePath) {
+                    for (const path of imageFiles) {
+                        removeImage(path);
+                    }
+                    return res.status(500).json({ success: false, error: 'Không thể lưu một hoặc nhiều hình ảnh từ imagesData' });
+                }
+                imageFiles.push(imageFilePath);
+            }
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: "",
+                attachments: imageFiles
+            },
+            threadId,
+            ThreadType.Group
+        ).catch(console.error);
+
+        for (const imageFile of imageFiles) {
+            removeImage(imageFile);
+        }
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// Các hàm khác giữ nguyên từ phiên bản trước
 export async function findUser(req, res) {
   try {
     const { phone, ownId } = req.body;
@@ -47,7 +289,7 @@ export async function sendFriendRequest(req, res) {
   try {
     const { userId, ownId } = req.body;
     if (!userId || !ownId) {
-      return res.status(400).json({ error: 'Dữ PROGRESS liệu không hợp lệ' });
+      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
     }
     const account = zaloAccounts.find((acc) => acc.ownId === ownId);
     if (!account) {
@@ -146,162 +388,6 @@ export async function removeUserFromGroup(req, res) {
   }
 }
 
-// Hàm gửi một hình ảnh đến người dùng
-export async function sendImageToUser(req, res) {
-    try {
-        const { imagePath: imageUrl, threadId, ownId } = req.body;
-        if (!imageUrl || !threadId || !ownId) {
-            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePath và threadId là bắt buộc' });
-        }
-
-       
-        const imagePath = await saveImage(imageUrl);
-        if (!imagePath) return res.status(500).json({ success: false, error: 'Failed to save image' });
-
-        const account = zaloAccounts.find(acc => acc.ownId === ownId);
-        if (!account) {
-            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-        }
-
-        const result = await account.api.sendMessage(
-            {
-                msg: "",
-                attachments: [imagePath]
-            },
-            threadId,
-            ThreadType.User
-        ).catch(console.error);
-
-        removeImage(imagePath);
-        res.json({ success: true, data: result });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-// Hàm gửi nhiều hình ảnh đến người dùng
-export async function sendImagesToUser(req, res) {
-    try {
-        const { imagePaths: imageUrls, threadId, ownId } = req.body;
-        if (!imageUrls || !threadId || !ownId || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths phải là mảng không rỗng và threadId là bắt buộc' });
-        }
-
-      
-        const imagePaths = [];
-        for (const imageUrl of imageUrls) {
-            const imagePath = await saveImage(imageUrl);
-            if (!imagePath) {
-                // Clean up any saved images
-                for (const path of imagePaths) {
-                    removeImage(path);
-                }
-                return res.status(500).json({ success: false, error: 'Failed to save one or more images' });
-            }
-            imagePaths.push(imagePath);
-        }
-
-        const account = zaloAccounts.find(acc => acc.ownId === ownId);
-        if (!account) {
-            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-        }
-
-        const result = await account.api.sendMessage(
-            {
-                msg: "",
-                attachments: imagePaths
-            },
-            threadId,
-            ThreadType.User
-        ).catch(console.error);
-
-        for (const imagePath of imagePaths) {
-            removeImage(imagePath);
-        }
-        res.json({ success: true, data: result });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-// Hàm gửi một hình ảnh đến nhóm
-export async function sendImageToGroup(req, res) {
-    try {
-        const { imagePath: imageUrl, threadId, ownId } = req.body;
-        if (!imageUrl || !threadId || !ownId) {
-            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePath và threadId là bắt buộc' });
-        }
-
-       
-        const imagePath = await saveImage(imageUrl);
-        if (!imagePath) return res.status(500).json({ success: false, error: 'Failed to save image' });
-
-        const account = zaloAccounts.find(acc => acc.ownId === ownId);
-        if (!account) {
-            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-        }
-
-        const result = await account.api.sendMessage(
-            {
-                msg: "",
-                attachments: [imagePath]
-            },
-            threadId,
-            ThreadType.Group
-        ).catch(console.error);
-
-        removeImage(imagePath);
-        res.json({ success: true, data: result });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-}
-
-// Hàm gửi nhiều hình ảnh đến nhóm
-export async function sendImagesToGroup(req, res) {
-    try {
-        const { imagePaths: imageUrls, threadId, ownId } = req.body;
-        if (!imageUrls || !threadId || !ownId || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths phải là mảng không rỗng và threadId là bắt buộc' });
-        }
-
-      
-        const imagePaths = [];
-        for (const imageUrl of imageUrls) {
-            const imagePath = await saveImage(imageUrl);
-            if (!imagePath) {
-                // Clean up any saved images
-                for (const path of imagePaths) {
-                    removeImage(path);
-                }
-                return res.status(500).json({ success: false, error: 'Failed to save one or more images' });
-            }
-            imagePaths.push(imagePath);
-        }
-
-        const account = zaloAccounts.find(acc => acc.ownId === ownId);
-        if (!account) {
-            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-        }
-
-        const result = await account.api.sendMessage(
-            {
-                msg: "",
-                attachments: imagePaths
-            },
-            threadId,
-            ThreadType.Group
-        ).catch(console.error);
-
-        for (const imagePath of imagePaths) {
-            removeImage(imagePath);
-        }
-        res.json({ success: true, data: result });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-}
-
 export async function loginZaloAccount(customProxy, cred) {
     let loginResolve;
     return new Promise(async (resolve, reject) => {
@@ -363,7 +449,6 @@ export async function loginZaloAccount(customProxy, cred) {
                 });
             }
         } else {
-            // Thêm timeout cho loginQR
             const QR_TIMEOUT = 120000; // 2 phút
             const loginPromise = zalo.loginQR(null, (qrData) => {
                 if (qrData?.data?.image) {
@@ -383,7 +468,7 @@ export async function loginZaloAccount(customProxy, cred) {
                 api = await Promise.race([loginPromise, timeoutPromise]);
             } catch (error) {
                 console.error('Lỗi đăng nhập QR:', error.message);
-                reject(error); // Đảm bảo reject lỗi để không treo Promise
+                reject(error);
                 return;
             }
         }

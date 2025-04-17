@@ -6,3 +6,5 @@ services:
       - "3000:3000" # Ánh xạ cổng động cho Express
     restart: always
     working_dir: /app
+    env_file:
+      - .env

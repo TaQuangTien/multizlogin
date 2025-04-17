@@ -60,7 +60,7 @@
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "phone": "0123456789",
   "ownId": "0000000000000000001"
 }' http://localhost:3000/findUser
@@ -94,7 +94,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getUserInfo
@@ -128,7 +128,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000002",
   "ownId": "0000000000000000001"
 }' http://localhost:3000/sendFriendRequest
@@ -176,7 +176,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "message": "Xin chào",
   "threadId": "0000000000000000001",
   "type": "User",
@@ -226,7 +226,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "members": ["0000000000000000002", "0000000000000000003"],
   "name": "Nhóm Mới",
   "avatarPath": "./avatar.jpg",
@@ -262,7 +262,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getGroupInfo
@@ -303,7 +303,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
@@ -345,7 +345,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
@@ -355,15 +355,22 @@ curl -X POST -H "Content-Type: application/json" -d '{
       <hr/>
 
       <h3 id="sendImageToUser">9. sendImageToUser</h3>
-      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến người dùng.</p>
+      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một người dùng Zalo.</p>
       <p><strong>Endpoint:</strong> POST /sendImageToUser</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
       <table>
         <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
         <tr>
           <td>imagePath</td>
           <td>string</td>
-          <td>Đường dẫn hoặc URL đến hình ảnh cần gửi.</td>
-          <td>Có</td>
+          <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+        </tr>
+        <tr>
+          <td>imageData</td>
+          <td>string</td>
+          <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/jpeg;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
         </tr>
         <tr>
           <td>threadId</td>
@@ -374,21 +381,39 @@ curl -X POST -H "Content-Type: application/json" -d '{
         <tr>
           <td>ownId</td>
           <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
           <td>Có</td>
         </tr>
       </table>
+      <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng (JPEG, PNG, GIF) trước khi gửi. Đảm bảo cung cấp prefix MIME type trong <code>imageData</code> để xác định đúng định dạng.</p>
+      <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
       <pre>
 {
-  "imagePath": "./path/to/image.jpg",
+  "imagePath": "https://example.com/image.jpg",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
+      <p><strong>Ví dụ (sử dụng imageData):</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
-  "imagePath": "./path/to/image.jpg",
+{
+  "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagePath": "https://example.com/image.jpg",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendImageToUser
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImageToUser
@@ -397,15 +422,22 @@ curl -X POST -H "Content-Type: application/json" -d '{
       <hr/>
 
       <h3 id="sendImagesToUser">10. sendImagesToUser</h3>
-      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến người dùng.</p>
+      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một người dùng Zalo.</p>
       <p><strong>Endpoint:</strong> POST /sendImagesToUser</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
       <table>
         <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
         <tr>
           <td>imagePaths</td>
           <td>string[]</td>
-          <td>Mảng đường dẫn hoặc URL hình ảnh.</td>
-          <td>Có</td>
+          <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+        </tr>
+        <tr>
+          <td>imagesData</td>
+          <td>string[]</td>
+          <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ: <code>data:image/png;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
         </tr>
         <tr>
           <td>threadId</td>
@@ -416,21 +448,45 @@ curl -X POST -H "Content-Type: application/json" -d '{
         <tr>
           <td>ownId</td>
           <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
           <td>Có</td>
         </tr>
       </table>
+      <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
+      <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
       <pre>
 {
-  "imagePaths": ["./path/to/image1.jpg", "./path/to/image2.jpg"],
+  "imagePaths": ["https://example.com/image1.jpg", "https://example.com/image2.png"],
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
+      <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
-  "imagePaths": ["./path/to/image1.jpg", "./path/to/image2.jpg"],
+{
+  "imagesData": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA..."
+  ],
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagePaths": ["https://example.com/image1.jpg", "https://example.com/image2.png"],
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendImagesToUser
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagesData": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA..."
+  ],
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImagesToUser
@@ -439,15 +495,22 @@ curl -X POST -H "Content-Type: application/json" -d '{
       <hr/>
 
       <h3 id="sendImageToGroup">11. sendImageToGroup</h3>
-      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến nhóm.</p>
+      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một nhóm Zalo.</p>
       <p><strong>Endpoint:</strong> POST /sendImageToGroup</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
       <table>
         <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
         <tr>
           <td>imagePath</td>
           <td>string</td>
-          <td>Đường dẫn hoặc URL đến hình ảnh cần gửi.</td>
-          <td>Có</td>
+          <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+        </tr>
+        <tr>
+          <td>imageData</td>
+          <td>string</td>
+          <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/gif;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
         </tr>
         <tr>
           <td>threadId</td>
@@ -458,21 +521,39 @@ curl -X POST -H "Content-Type: application/json" -d '{
         <tr>
           <td>ownId</td>
           <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
           <td>Có</td>
         </tr>
       </table>
+      <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong <code>imageData</code>.</p>
+      <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
       <pre>
 {
-  "imagePath": "./path/to/group-image.jpg",
+  "imagePath": "https://example.com/group-image.jpg",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
+      <p><strong>Ví dụ (sử dụng imageData):</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
-  "imagePath": "./path/to/group-image.jpg",
+{
+  "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...",
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagePath": "https://example.com/group-image.jpg",
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendImageToGroup
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImageToGroup
@@ -481,15 +562,22 @@ curl -X POST -H "Content-Type: application/json" -d '{
       <hr/>
 
       <h3 id="sendImagesToGroup">12. sendImagesToGroup</h3>
-      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến nhóm.</p>
+      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một nhóm Zalo.</p>
       <p><strong>Endpoint:</strong> POST /sendImagesToGroup</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
       <table>
         <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
         <tr>
           <td>imagePaths</td>
           <td>string[]</td>
-          <td>Mảng đường dẫn hoặc URL hình ảnh.</td>
-          <td>Có</td>
+          <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+        </tr>
+        <tr>
+          <td>imagesData</td>
+          <td>string[]</td>
+          <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ: <code>data:image/jpeg;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
         </tr>
         <tr>
           <td>threadId</td>
@@ -500,21 +588,45 @@ curl -X POST -H "Content-Type: application/json" -d '{
         <tr>
           <td>ownId</td>
           <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
           <td>Có</td>
         </tr>
       </table>
+      <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
+      <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
       <pre>
 {
-  "imagePaths": ["./path/to/group-image1.jpg", "./path/to/group-image2.jpg"],
+  "imagePaths": ["https://example.com/group-image1.jpg", "https://example.com/group-image2.png"],
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
+      <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
       <pre>
-curl -X POST -H "Content-Type: application/json" -d '{
-  "imagePaths": ["./path/to/group-image1.jpg", "./path/to/group-image2.jpg"],
+{
+  "imagesData": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
+    "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
+  ],
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagePaths": ["https://example.com/group-image1.jpg", "https://example.com/group-image2.png"],
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendImagesToGroup
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "imagesData": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
+    "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
+  ],
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImagesToGroup
@@ -525,10 +637,9 @@ curl -X POST -H "Content-Type: application/json" -d '{
       <h3 id="accounts">13. accounts</h3>
       <p><strong>Mục đích:</strong> Lấy danh sách tài khoản đã đăng nhập.</p>
       <p><strong>Endpoint:</strong> GET /accounts</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
       <p><strong>Response:</strong></p>
       <pre>
-// Nếu có tài khoản đã đăng nhập, dữ liệu trả về sẽ hiển thị dạng bảng.
-// Ví dụ (dạng JSON thuần):
 [
   {
     "ownId": "0000000000000000001",
@@ -541,17 +652,10 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "phoneNumber": "N/A"
   }
 ]
-
-// Nếu chưa có tài khoản nào đăng nhập:
-{
-  "success": true,
-  "message": "Chưa có tài khoản nào đăng nhập"
-}
       </pre>
       <p><strong>Ví dụ curl:</strong></p>
       <pre>
-curl http://localhost:3000/accounts
+curl -H "x-api-key: YOUR_API_KEY" http://localhost:3000/accounts
       </pre>
-
     </body>
-  </html>
+</html>

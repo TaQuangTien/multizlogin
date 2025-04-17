@@ -1,7 +1,5 @@
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { apiKeyAuth } from './middleware.js';
 import { 
     findUser, 
     getUserInfo, 
@@ -16,14 +14,26 @@ import {
     sendImageToGroup,
     sendImagesToGroup
 } from './zaloService.js';
+import { zaloAccounts } from './api/zalo/zalo.js';
 
 const router = express.Router();
 
-// Dành cho ES Module: xác định __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Áp dụng middleware apiKeyAuth cho tất cả các route API
+router.use(apiKeyAuth);
 
-// Giữ nguyên API cũ
+// Lấy danh sách tài khoản đã đăng nhập
+router.get('/accounts', (req, res) => {
+  if (zaloAccounts.length === 0) {
+    return res.json({ success: true, message: 'Chưa có tài khoản nào đăng nhập' });
+  }
+  const data = zaloAccounts.map((acc) => ({
+    ownId: acc.ownId,
+    proxy: acc.proxy,
+    phoneNumber: acc.phoneNumber || 'N/A',
+  }));
+  res.json(data);
+});
+
 router.post('/findUser', findUser);
 router.post('/getUserInfo', getUserInfo);
 router.post('/sendFriendRequest', sendFriendRequest);
@@ -36,6 +46,5 @@ router.post('/sendImageToUser', sendImageToUser);
 router.post('/sendImagesToUser', sendImagesToUser);
 router.post('/sendImageToGroup', sendImageToGroup);
 router.post('/sendImagesToGroup', sendImagesToGroup);
-
 
 export default router;
