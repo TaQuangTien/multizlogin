@@ -156,7 +156,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
         <tr>
           <td>type</td>
           <td>string</td>
-          <td>Loại thread ("User" hoặc "Group"). Mặc định là "User".</td>
+          <td>Loại thread ("0" hoặc "1"). Mặc định là "User".</td>
           <td>Không</td>
         </tr>
         <tr>
@@ -170,7 +170,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 {
   "message": "Xin chào",
   "threadId": "0000000000000000001",
-  "type": "User",
+  "type": "0",
   "ownId": "0000000000000000009"
 }
       </pre>
@@ -179,7 +179,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "message": "Xin chào",
   "threadId": "0000000000000000001",
-  "type": "User",
+  "type": "0",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendmessage
       </pre>
