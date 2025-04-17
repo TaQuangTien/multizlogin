@@ -22,6 +22,10 @@ docker run -d   --name zalo-server-new   -p 3000:3000   -e ADMIN_USERNAME=admin 
 
 4. Truy cập container_ip:3000 để sử dụng
 
+5. Các biến môi trường cần lưu ý:
+  - ADMIN_USERNAME=admin // Tên đăng nhập trang chủ + Basic Authentication cho các POST request tới API
+  - ADMIN_PASSWORD=admin // Mật khẩu đăng nhập trang chủ + Basic Authentication cho các POST request tới API
+  - X_API_KEY=your-secret-api-key // Header x-api-key để xác thực các POST request tới API
 
 B- SỬ DỤNG
 
