@@ -642,49 +642,10 @@ router.post('/restartApp', (req, res) => {
     console.log('WebSocket server đã đóng');
   });
 
-  server.close(async (err) => {
-    if (err) {
-      console.error('Lỗi khi đóng HTTP server:', err);
-      res.status(500).send('Lỗi khi khởi động lại ứng dụng');
-      return;
-    }
-    console.log('HTTP server đã đóng');
-
-    while (zaloAccounts.length > 0) {
-      zaloAccounts.pop();
-    }
-
-    const cookiesDir = path.join(__dirname, 'cookies');
-    if (fs.existsSync(cookiesDir)) {
-      const cookieFiles = fs.readdirSync(cookiesDir);
-      for (const file of cookieFiles) {
-        if (file.startsWith('cred_') && file.endsWith('.json')) {
-          const ownId = file.substring(5, file.length - 5);
-          try {
-            const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
-            await loginZaloAccount(null, cookie);
-            console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie`);
-          } catch (error) {
-            console.error(`Lỗi khi đăng nhập lại tài khoản ${ownId}:`, error);
-          }
-        }
-      }
-    }
-
-    server.listen(3000, '0.0.0.0', () => {
-      console.log('HTTP server đã khởi động lại');
-      res.send(`
-        <html>
-          <body>
-            <script>
-              alert('Ứng dụng đã được khởi động lại thành công!');
-              window.location.href = '/home';
-            </script>
-          </body>
-        </html>
-      `);
-    });
-  });
+  setTimeout(() => {
+    console.log("Tự khởi động lại container...");
+    process.exit(1);
+  }, 10000);  
 });
 
 export default router;
