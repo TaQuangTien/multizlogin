@@ -17,7 +17,7 @@ docker build -t zalo-server .
 
 3. Sau khi build xong, bạn có thể tạo container bằng lệnh:
 ```CLI
-docker run --restart=on-failure -d --name zalo-server-new   -p 3000:3000   -e ADMIN_USERNAME=admin   -e ADMIN_PASSWORD=admin   -e X_API_KEY=your-secret-api-key   -e SESSION_SECRET=your-secret zalo-server:latest
+docker run --restart=on-failure -d --name zalo-server -p 3000:3000 -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=admin e X_API_KEY=your-secret-api-key -e SESSION_SECRET=your-secret zalo-server:latest
 ```
 
 4. Truy cập container_ip:3000 để sử dụng
