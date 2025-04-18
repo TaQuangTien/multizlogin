@@ -356,33 +356,18 @@ router.post('/import', (req, res) => {
       return res.status(500).json({ success: false, error: 'Lỗi khi lưu file' });
     }
 
-    // Nếu là file tài khoản, thử đăng nhập lại
-    if (filename.startsWith('cred_') && filename.endsWith('.json')) {
-      const ownId = filename.substring(5, filename.length - 5);
-      try {
-        const cookie = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
-        loginZaloAccount(null, cookie)
-          .then(() => {
-            console.log(`Đã đăng nhập lại tài khoản ${ownId} từ file import`);
-          })
-          .catch((error) => {
-            console.error(`Lỗi khi đăng nhập tài khoản ${ownId}:`, error);
-          });
-      } catch (error) {
-        console.error(`Lỗi khi đọc file ${filename}:`, error);
-      }
-    }
 
     // Gửi phản hồi với alert và chuyển hướng sau 10 giây
     res.send(`
       <html>
         <body>
           <script>
-            alert('Đang upload file, refresh trang sau 10 giây');
             setTimeout(function() {
               window.location.href = '/home';
             }, 10000);
+            alert('Đang upload file, vui lòng chờ 10 giây và bấm ok');            
           </script>
+          <a>Đang tải lại container </a><strong><a href='/home'> Về trang chủ </a></strong>
         </body>
       </html>
     `);
@@ -409,42 +394,11 @@ router.post('/import', (req, res) => {
         console.log('WebSocket server đã đóng');
       });
 
-      server.close(async (err) => {
-        if (err) {
-          console.error('Lỗi khi đóng HTTP server:', err);
-          return;
-        }
-        console.log('HTTP server đã đóng');
-
-        // Xóa danh sách tài khoản
-        while (zaloAccounts.length > 0) {
-          zaloAccounts.pop();
-        }
-
-        // Tải lại các tài khoản từ cookies
-        const cookiesDir = path.join(__dirname, 'cookies');
-        if (fs.existsSync(cookiesDir)) {
-          const cookieFiles = fs.readdirSync(cookiesDir);
-          for (const file of cookieFiles) {
-            if (file.startsWith('cred_') && file.endsWith('.json')) {
-              const ownId = file.substring(5, file.length - 5);
-              try {
-                const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
-                await loginZaloAccount(null, cookie);
-                console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie`);
-              } catch (error) {
-                console.error(`Lỗi khi đăng nhập lại tài khoản ${ownId}:`, error);
-              }
-            }
-          }
-        }
-
-        // Khởi động lại server
-        server.listen(3000, '0.0.0.0', () => {
-          console.log('HTTP server đã khởi động lại');
-        });
-      });
-    }, 10000);
+      setTimeout(() => {
+        console.log("Tự khởi động lại container...");
+        process.exit(1); // Thoát với mã lỗi khác 0 để kích hoạt restart
+      }, 1000);
+    }, 1000);
   });
 });
 
