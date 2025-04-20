@@ -41,11 +41,10 @@ export async function triggerN8nWebhook(msg, webhookUrl) {
 
 export async function saveImage(url) {
     try {
-        const imgPath = "./temp.png";
-
+        const timestamp = Date.now();
+        const imgPath = `./${timestamp}.png`;
         const { data } = await axios.get(url, { responseType: "arraybuffer" });
         fs.writeFileSync(imgPath, Buffer.from(data, "utf-8"));
-
         return imgPath;
     } catch (error) {
         console.error(error);
