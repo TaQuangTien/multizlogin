@@ -84,6 +84,7 @@ export async function sendImageToUser(req, res) {
         ).catch(console.error);
 
         removeImage(imageFilePath);
+
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -94,8 +95,8 @@ export async function sendImageToUser(req, res) {
 export async function sendImagesToUser(req, res) {
     try {
         const { imagePaths, imagesData, threadId, ownId } = req.body;
-        if ((!imagePaths && !imagesData) || !threadId || !ownId || 
-            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) || 
+        if ((!imagePaths && !imagesData) || !threadId || !ownId ||
+            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) ||
             (imagesData && (!Array.isArray(imagesData) || imagesData.length === 0))) {
             return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths hoặc imagesData phải là mảng không rỗng và threadId là bắt buộc' });
         }
@@ -144,6 +145,7 @@ export async function sendImagesToUser(req, res) {
         for (const imageFile of imageFiles) {
             removeImage(imageFile);
         }
+
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -184,6 +186,7 @@ export async function sendImageToGroup(req, res) {
         ).catch(console.error);
 
         removeImage(imageFilePath);
+
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -194,8 +197,8 @@ export async function sendImageToGroup(req, res) {
 export async function sendImagesToGroup(req, res) {
     try {
         const { imagePaths, imagesData, threadId, ownId } = req.body;
-        if ((!imagePaths && !imagesData) || !threadId || !ownId || 
-            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) || 
+        if ((!imagePaths && !imagesData) || !threadId || !ownId ||
+            (imagePaths && (!Array.isArray(imagePaths) || imagePaths.length === 0)) ||
             (imagesData && (!Array.isArray(imagesData) || imagesData.length === 0))) {
             return res.status(400).json({ error: 'Dữ liệu không hợp lệ: imagePaths hoặc imagesData phải là mảng không rỗng và threadId là bắt buộc' });
         }
@@ -244,6 +247,7 @@ export async function sendImagesToGroup(req, res) {
         for (const imageFile of imageFiles) {
             removeImage(imageFile);
         }
+
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -252,140 +256,144 @@ export async function sendImagesToGroup(req, res) {
 
 // Các hàm khác giữ nguyên từ phiên bản trước
 export async function findUser(req, res) {
-  try {
-    const { phone, ownId } = req.body;
-    if (!phone || !ownId) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { phone, ownId } = req.body;
+        if (!phone || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const userData = await account.api.findUser(phone);
+        res.json({ success: true, data: userData });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const userData = await account.api.findUser(phone);
-    res.json({ success: true, data: userData });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function getUserInfo(req, res) {
-  try {
-    const { userId, ownId } = req.body;
-    if (!userId || !ownId) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { userId, ownId } = req.body;
+        if (!userId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const info = await account.api.getUserInfo(userId);
+        res.json({ success: true, data: info });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const info = await account.api.getUserInfo(userId);
-    res.json({ success: true, data: info });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function sendFriendRequest(req, res) {
-  try {
-    const { userId, ownId } = req.body;
-    if (!userId || !ownId) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { userId, ownId } = req.body;
+        if (!userId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.sendFriendRequest('Xin chào, hãy kết bạn với tôi!', userId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const result = await account.api.sendFriendRequest('Xin chào, hãy kết bạn với tôi!', userId);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function sendMessage(req, res) {
-  try {
-    const { message, threadId, type, ownId } = req.body;
-    if (!message || !threadId || !ownId) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { message, threadId, type, ownId } = req.body;
+        if (!message || !threadId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const msgType = type || ThreadType.User;
+        const result = await account.api.sendMessage(message, threadId, msgType);
+
+	account.lastAPIMessage = message;
+	console.log('SetLastMessage: ' + account.lastAPIMessage);
+
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const msgType = type || ThreadType.User;
-    const result = await account.api.sendMessage(message, threadId, msgType);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function createGroup(req, res) {
-  try {
-    const { members, name, avatarPath, ownId } = req.body;
-    if (!members || !Array.isArray(members) || members.length === 0 || !ownId) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { members, name, avatarPath, ownId } = req.body;
+        if (!members || !Array.isArray(members) || members.length === 0 || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.createGroup({ members, name, avatarPath });
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const result = await account.api.createGroup({ members, name, avatarPath });
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function getGroupInfo(req, res) {
-  try {
-    const { groupId, ownId } = req.body;
-    if (!groupId || (Array.isArray(groupId) && groupId.length === 0)) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { groupId, ownId } = req.body;
+        if (!groupId || (Array.isArray(groupId) && groupId.length === 0)) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.getGroupInfo(groupId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const result = await account.api.getGroupInfo(groupId);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function addUserToGroup(req, res) {
-  try {
-    const { groupId, memberId, ownId } = req.body;
-    if (!groupId || !memberId || (Array.isArray(memberId) && memberId.length === 0)) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { groupId, memberId, ownId } = req.body;
+        if (!groupId || !memberId || (Array.isArray(memberId) && memberId.length === 0)) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.addUserToGroup(memberId, groupId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const result = await account.api.addUserToGroup(memberId, groupId);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function removeUserFromGroup(req, res) {
-  try {
-    const { memberId, groupId, ownId } = req.body;
-    if (!groupId || !memberId || (Array.isArray(memberId) && memberId.length === 0)) {
-      return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+    try {
+        const { memberId, groupId, ownId } = req.body;
+        if (!groupId || !memberId || (Array.isArray(memberId) && memberId.length === 0)) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ' });
+        }
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.removeUserFromGroup(memberId, groupId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
-    const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-    if (!account) {
-      return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
-    }
-    const result = await account.api.removeUserFromGroup(memberId, groupId);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
 }
 
 export async function loginZaloAccount(customProxy, cred) {
@@ -429,11 +437,11 @@ export async function loginZaloAccount(customProxy, cred) {
                 }
             }
         }
-        
+
         // Nhận sự kiện tin nhắn tới từ chính tài khoản này
         const zalo = agent
-  		    ? new Zalo({ agent, polyfill: nodefetch, selfListen: true })
-  		    : new Zalo({ polyfill: nodefetch, selfListen: true });
+            ? new Zalo({ agent, polyfill: nodefetch, selfListen: true })
+            : new Zalo({ polyfill: nodefetch, selfListen: true });
 
 
         let api;
@@ -499,6 +507,7 @@ export async function loginZaloAccount(customProxy, cred) {
                 ownId: api.getOwnId(),
                 proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
                 phoneNumber,
+                lastAPIMessage: ""
             };
         } else {
             zaloAccounts.push({
@@ -506,6 +515,7 @@ export async function loginZaloAccount(customProxy, cred) {
                 ownId: api.getOwnId(),
                 proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
                 phoneNumber,
+                lastAPIMessage: ""
             });
         }
 
@@ -526,8 +536,7 @@ export async function loginZaloAccount(customProxy, cred) {
         });
 
         console.log(
-            `Đã đăng nhập ${ownId} (${displayName}) - ${phoneNumber} qua proxy ${
-                useCustomProxy ? customProxy : proxyUsed?.url || 'không có proxy'
+            `Đã đăng nhập ${ownId} (${displayName}) - ${phoneNumber} qua proxy ${useCustomProxy ? customProxy : proxyUsed?.url || 'không có proxy'
             }`
         );
     });
