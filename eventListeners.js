@@ -14,7 +14,16 @@ export function setupEventListeners(api, loginResolve) {
     if (messageWebhookUrl) {
       const ownId = api.getOwnId(); // Lấy ownId từ api
       if (ownId) {
-        triggerN8nWebhook({ ...msg, AccountID: ownId }, messageWebhookUrl); // Thêm AccountID vào dữ liệu
+        // Kiểm tra isAPI cho tin nhắn isSelf
+        let isAPI = false;
+	
+        if (msg.isSelf && msg.data?.content) {
+      	  const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+      
+      	  if (account.lastAPIMessage == msg.data.content)
+      		isAPI = true;	
+        }
+        triggerN8nWebhook({ ...msg, AccountID: ownId, isAPI }, messageWebhookUrl);
       } else {
         console.error('Không thể lấy AccountID cho sự kiện message');
         triggerN8nWebhook(msg, messageWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
