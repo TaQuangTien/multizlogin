@@ -7,6 +7,9 @@ import nodefetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 
+// Đọc biến môi trường SELF_LISTEN, mặc định là false nếu không được định nghĩa
+const selfListen = process.env.SELF_LISTEN === 'true';
+
 export const zaloAccounts = [];
 
 // Ánh xạ MIME type sang phần mở rộng file
@@ -439,9 +442,11 @@ export async function loginZaloAccount(customProxy, cred) {
         }
 
         // Nhận sự kiện tin nhắn tới từ chính tài khoản này
-        const zalo = agent
-            ? new Zalo({ agent, polyfill: nodefetch, selfListen: true })
-            : new Zalo({ polyfill: nodefetch, selfListen: true });
+	console.log('SELF_LISTEN:', selfListen);
+	    
+	const zalo = agent
+	    ? new Zalo({ agent, polyfill: nodefetch, selfListen })
+	    : new Zalo({ polyfill: nodefetch, selfListen });
 
 
         let api;
