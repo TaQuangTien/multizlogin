@@ -429,10 +429,12 @@ export async function loginZaloAccount(customProxy, cred) {
                 }
             }
         }
-
+        
+        // Nhận sự kiện tin nhắn tới từ chính tài khoản này
         const zalo = agent
-            ? new Zalo({ agent, polyfill: nodefetch })
-            : new Zalo({ polyfill: nodefetch });
+  		    ? new Zalo({ agent, polyfill: nodefetch, selfListen: true })
+  		    : new Zalo({ polyfill: nodefetch, selfListen: true });
+
 
         let api;
         if (cred) {
