@@ -12,7 +12,8 @@ import {
     sendImageToUser,
     sendImagesToUser,
     sendImageToGroup,
-    sendImagesToGroup
+    sendImagesToGroup,
+    sendFileToUser
 } from './zaloService.js';
 import { zaloAccounts } from './api/zalo/zalo.js';
 
@@ -46,5 +47,6 @@ router.post('/sendImageToUser', sendImageToUser);
 router.post('/sendImagesToUser', sendImagesToUser);
 router.post('/sendImageToGroup', sendImageToGroup);
 router.post('/sendImagesToGroup', sendImagesToGroup);
+router.post('/sendFileToUser', sendFileToUser);
 
 export default router;
