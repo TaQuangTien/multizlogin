@@ -19,6 +19,135 @@ const mimeToExtension = {
     'image/gif': '.gif'
 };
 
+// Ánh xạ MIME type sang phần mở rộng file cho các loại file phổ biến
+const fileTypeToExtension = {
+    // Documents
+    'application/pdf': '.pdf',
+    'application/msword': '.doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+    'application/vnd.ms-excel': '.xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/vnd.ms-powerpoint': '.ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+    'text/plain': '.txt',
+    'text/csv': '.csv',
+    
+    // Archives
+    'application/zip': '.zip',
+    'application/x-rar-compressed': '.rar',
+    'application/x-7z-compressed': '.7z',
+    
+    // Audio
+    'audio/mpeg': '.mp3',
+    'audio/wav': '.wav',
+    'audio/ogg': '.ogg',
+    'audio/mp4': '.m4a',
+    
+    // Video
+    'video/mp4': '.mp4',
+    'video/avi': '.avi',
+    'video/quicktime': '.mov',
+    'video/x-msvideo': '.avi',
+    
+    // Images (bổ sung thêm)
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'image/svg+xml': '.svg'
+};
+
+// Hàm lưu dữ liệu base64 thành file
+async function saveBase64File(base64Data, fileName, mimeType = null) {
+    try {
+        // Tạo thư mục tmp nếu chưa tồn tại
+        const tmpDir = './tmp';
+        if (!fs.existsSync(tmpDir)) {
+            fs.mkdirSync(tmpDir, { recursive: true });
+        }
+
+        // Phân tích prefix để lấy MIME type
+        let base64String = base64Data;
+        let extension = '.bin'; // Mặc định là binary file
+        
+        // Kiểm tra prefix data: trong base64
+        const dataUrlMatch = base64Data.match(/^data:([^;]+);base64,/);
+        if (dataUrlMatch) {
+            const detectedMimeType = dataUrlMatch[1];
+            if (fileTypeToExtension[detectedMimeType]) {
+                extension = fileTypeToExtension[detectedMimeType];
+            }
+            base64String = base64Data.replace(/^data:[^;]+;base64,/, '');
+        } 
+        // Sử dụng mimeType được truyền vào nếu có
+        else if (mimeType && fileTypeToExtension[mimeType]) {
+            extension = fileTypeToExtension[mimeType];
+        } else {
+            console.warn('Không tìm thấy MIME type, sử dụng extension mặc định .bin');
+        }
+
+        const buffer = Buffer.from(base64String, 'base64');
+        const filePath = path.join(tmpDir, `${fileName}${extension}`);
+        fs.writeFileSync(filePath, buffer);
+        return filePath;
+    } catch (error) {
+        console.error('Lỗi khi lưu file từ base64:', error);
+        return null;
+    }
+}
+
+// Hàm gửi một file đến người dùng
+export async function sendFileToUser(req, res) {
+    try {
+        const { filePath, fileData, mimeType, threadId, ownId } = req.body;
+        if ((!filePath && !fileData) || !threadId || !ownId) {
+            return res.status(400).json({ 
+                error: 'Dữ liệu không hợp lệ: filePath hoặc fileData và threadId là bắt buộc' 
+            });
+        }
+
+        let actualFilePath;
+        const timestamp = Date.now();
+        
+        if (filePath) {
+            // Sử dụng helper function saveImage có thể xử lý file thông thường
+            actualFilePath = await saveImage(filePath);
+        } else if (fileData) {
+            actualFilePath = await saveBase64File(fileData, `file_${timestamp}`, mimeType);
+        }
+        
+        if (!actualFilePath) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Không thể lưu file' 
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ 
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này' 
+            });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: "",
+                attachments: [actualFilePath]
+            },
+            threadId,
+            ThreadType.User
+        ).catch(console.error);
+
+        // Dọn dẹp file tạm
+        removeImage(actualFilePath);
+
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
 // Hàm lưu dữ liệu base64 thành file hình ảnh tạm
 async function saveBase64Image(base64Data, fileName) {
     try {
