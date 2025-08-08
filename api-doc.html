@@ -706,31 +706,6 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl (sử dụng filePath):</strong></p>
-      <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
-  "filePath": "https://example.com/document.pdf",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}' http://localhost:3000/sendFileToUser
-      </pre>
-      <p><strong>Ví dụ curl (sử dụng fileData với prefix):</strong></p>
-      <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
-  "fileData": "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}' http://localhost:3000/sendFileToUser
-      </pre>
-      <p><strong>Ví dụ curl (sử dụng fileData + mimeType):</strong></p>
-      <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
-  "fileData": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
-  "mimeType": "application/pdf",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}' http://localhost:3000/sendFileToUser
-      </pre>
 
       <hr/>
 
