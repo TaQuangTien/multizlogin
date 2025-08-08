@@ -27,6 +27,7 @@
         <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
         <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
         <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
+        <li><a href="#sendFileToUser">sendFileToUser</a></li>
         <li><a href="#accounts">accounts</a></li>
       </ol>
 
@@ -634,7 +635,106 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 
       <hr/>
 
-      <h3 id="accounts">13. accounts</h3>
+      <h3 id="sendFileToUser">13. sendFileToUser</h3>
+      <p><strong>Mục đích:</strong> Gửi một file đến một người dùng Zalo.</p>
+      <p><strong>Endpoint:</strong> POST /sendFileToUser</p>
+      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+      <table>
+        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
+        <tr>
+          <td>filePath</td>
+          <td>string</td>
+          <td>Đường dẫn hoặc URL của file (hỗ trợ PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, ZIP, RAR, 7Z, MP3, WAV, MP4, AVI, MOV và các định dạng hình ảnh).</td>
+          <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+        </tr>
+        <tr>
+          <td>fileData</td>
+          <td>string</td>
+          <td>Dữ liệu file dạng base64. Có thể có prefix MIME type (ví dụ: <code>data:application/pdf;base64,...</code>) hoặc chỉ là base64 thuần.</td>
+          <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+        </tr>
+        <tr>
+          <td>mimeType</td>
+          <td>string</td>
+          <td>MIME type của file (ví dụ: <code>application/pdf</code>, <code>application/vnd.openxmlformats-officedocument.wordprocessingml.document</code>). Chỉ cần thiết khi <code>fileData</code> không có prefix MIME type.</td>
+          <td>Không</td>
+        </tr>
+        <tr>
+          <td>threadId</td>
+          <td>string</td>
+          <td>ID của người dùng nhận file.</td>
+          <td>Có</td>
+        </tr>
+        <tr>
+          <td>ownId</td>
+          <td>string</td>
+          <td>ID tài khoản Zalo gửi file (lấy từ /accounts).</td>
+          <td>Có</td>
+        </tr>
+      </table>
+      <p><strong>Các MIME type được hỗ trợ:</strong></p>
+      <ul>
+        <li><strong>Documents:</strong> application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation, text/plain, text/csv</li>
+        <li><strong>Archives:</strong> application/zip, application/x-rar-compressed, application/x-7z-compressed</li>
+        <li><strong>Audio:</strong> audio/mpeg, audio/wav, audio/ogg, audio/mp4</li>
+        <li><strong>Video:</strong> video/mp4, video/avi, video/quicktime, video/x-msvideo</li>
+        <li><strong>Images:</strong> image/jpeg, image/png, image/gif, image/webp, image/svg+xml</li>
+      </ul>
+      <p><strong>Ghi chú:</strong> File từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Nếu không xác định được MIME type, file sẽ được lưu với extension <code>.bin</code>.</p>
+      <p><strong>Ví dụ (sử dụng filePath):</strong></p>
+      <pre>
+{
+  "filePath": "https://example.com/document.pdf",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ (sử dụng fileData với prefix):</strong></p>
+      <pre>
+{
+  "fileData": "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ (sử dụng fileData không có prefix + mimeType):</strong></p>
+      <pre>
+{
+  "fileData": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
+  "mimeType": "application/pdf",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng filePath):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "filePath": "https://example.com/document.pdf",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToUser
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng fileData với prefix):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "fileData": "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToUser
+      </pre>
+      <p><strong>Ví dụ curl (sử dụng fileData + mimeType):</strong></p>
+      <pre>
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "fileData": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
+  "mimeType": "application/pdf",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToUser
+      </pre>
+
+      <hr/>
+
+      <h3 id="accounts">14. accounts</h3>
       <p><strong>Mục đích:</strong> Lấy danh sách tài khoản đã đăng nhập.</p>
       <p><strong>Endpoint:</strong> GET /accounts</p>
       <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
