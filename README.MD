@@ -290,7 +290,7 @@ Không cần IP tĩnh, không cần domain — Docker chủ động kéo việc 
 - Hướng dẫn triển khai chi tiết
 - Hỗ trợ kỹ thuật ban đầu
 
-### Giá: **500.000 VND** — một lần, sử dụng vĩnh viễn
+### Giá: **500.000 VND** — mua một lần, bảo hành 1 năm, nhận các bản cập nhật thường xuyên sau đó.
 
 ### Liên hệ:
 
