@@ -1,13 +1,15 @@
 import express from 'express';
+import fs from 'fs';
 import { apiKeyAuth } from './middleware.js';
-import { 
-    findUser, 
-    getUserInfo, 
-    sendFriendRequest, 
+import {
+    findUser,
+    getUserInfo,
+    sendFriendRequest,
+    undoFriendRequest,
     sendMessage,
-    createGroup, 
-    getGroupInfo, 
-    addUserToGroup, 
+    createGroup,
+    getGroupInfo,
+    addUserToGroup,
     removeUserFromGroup,
     sendImageToUser,
     sendImagesToUser,
@@ -48,5 +50,34 @@ router.post('/sendImagesToUser', sendImagesToUser);
 router.post('/sendImageToGroup', sendImageToGroup);
 router.post('/sendImagesToGroup', sendImagesToGroup);
 router.post('/sendFileToUser', sendFileToUser);
+router.post('/undoFriendRequest', undoFriendRequest);
+
+router.get('/health', (req, res) => {
+  const data = zaloAccounts.map((acc) => ({
+    ownId: acc.ownId,
+    status: acc.api ? 'ONLINE' : 'LOGOUT',
+    phoneNumber: acc.phoneNumber || 'N/A',
+  }));
+  res.json({ success: true, accounts: data });
+});
+
+router.post('/updateWebhookByAccount', (req, res) => {
+  const { ownId, url, settings, pullMode } = req.body;
+  if (!ownId || !url) {
+    return res.status(400).json({ error: 'ownId và url là bắt buộc' });
+  }
+  const multiWebhookPath = '/app/zalo_data/webhooks.json';
+  let config = {};
+  if (fs.existsSync(multiWebhookPath)) {
+    config = JSON.parse(fs.readFileSync(multiWebhookPath, 'utf8'));
+  }
+  config[ownId] = {
+    url,
+    settings: settings || { receiveReaction: true, receiveGroupEvent: true },
+    pullMode: pullMode || false
+  };
+  fs.writeFileSync(multiWebhookPath, JSON.stringify(config, null, 4), 'utf8');
+  res.json({ success: true, message: `Webhook cho ${ownId} đã được cập nhật` });
+});
 
 export default router;

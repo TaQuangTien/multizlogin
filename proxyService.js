@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const proxiesFilePath = path.join(__dirname, 'proxies.json');
+const proxiesFilePath = path.join(__dirname, 'zalo_data', 'proxies.json');
 
 const MAX_ACCOUNTS_PER_PROXY = 3;
 

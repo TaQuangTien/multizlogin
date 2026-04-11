@@ -1,6 +1,6 @@
 {
-  "name": "zalo-bot",
-  "version": "1.0.0",
+  "name": "zalo-tools-v4",
+  "version": "4.20260410",
   "type": "module",
   "scripts": {
     "start": "node server.js"
@@ -16,6 +16,7 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.33.5",
     "ws": "^8.18.1",
-    "zca-js": "^2.0.0-beta.14"
+    "zca-js": "2.1.1",
+    "selenium-webdriver": "^4.20.0"
   }
 }

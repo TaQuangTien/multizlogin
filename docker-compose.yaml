@@ -1,10 +1,37 @@
-version: "3.3"
+# Lệnh triển khai nhanh:
+# 1. Dựng và chạy container: docker-compose up -d
+# 2. Xem log: docker-compose logs -f
+# 3. Dừng và xóa container: docker-compose down
+
+version: "3"
 services:
-  zalo-server:
-    image: zalo-server:latest
+  zalo-bot-standalone:
+    build: .
+    container_name: zalo-tools-v4
     ports:
-      - "3000:3000" # Ánh xạ cổng động cho Express
+      - "${APP_PORT:-3000}:3000" # Quản diện (Admin UI)
+      - "${VNC_PORT:-7900}:7900" # NoVNC (Xem trình duyệt ngầm)
+    shm_size: 2gb
     restart: always
-    working_dir: /app
-    env_file:
-      - .env
+    environment:
+      - START_XVFB=${START_XVFB:-true}
+      - VNC_NO_PASSWORD=${VNC_NO_PASSWORD:-1}
+      - SCREEN_WIDTH=${SCREEN_WIDTH:-1280}
+      - SCREEN_HEIGHT=${SCREEN_HEIGHT:-800}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-your_password_here}
+      - X_API_KEY=${X_API_KEY:-your_secret_api_key_here}
+      - SESSION_SECRET=${SESSION_SECRET:-your_random_session_secret}
+      - SELF_LISTEN=${SELF_LISTEN:-true}
+      - SE_NODE_MAX_SESSIONS=${SE_NODE_MAX_SESSIONS:-1}
+      - SE_NODE_SESSION_TIMEOUT=${SE_NODE_SESSION_TIMEOUT:-300}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"    # Mỗi file log tối đa 10MB
+        max-file: "3"      # Giữ tối đa 3 file log (tổng cộng ~30MB)
+    volumes:
+      # Mount các thư mục quan trọng để bảo trì dữ liệu dễ dàng
+      # Docker sẽ tự động tạo các thư mục này khi bạn chạy lệnh 'up'
+      - ./cookies:/app/cookies           # Thư mục lưu phiên đăng nhập Zalo
+      - ./zalo_data:/app/zalo_data       # Thư mục lưu Cấu hình, Proxy, Webhook và User

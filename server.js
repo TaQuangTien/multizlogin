@@ -7,6 +7,9 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import fileUpload from 'express-fileupload';
 import session from 'express-session';
+import { startTaskPuller } from './taskPuller.js';
+import { startHealthCheck } from './healthCheck.js';
+import { addLog } from './routes-ui.js';
 
 
 
@@ -40,18 +43,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', routes);
 
-export function broadcastLoginSuccess() {
+export function broadcastEvent(event, data = {}) {
+  const payload = JSON.stringify({ event, ...data });
   wss.clients.forEach((client) => {
     if (client.readyState === client.OPEN) {
-      client.send('login_success');
+      client.send(payload);
     }
   });
+}
+
+export function broadcastLoginSuccess() {
+  broadcastEvent('login_success');
 }
 
 // Async wrapper for cookie loading
 async function loadCookies() {
   try {
-    const cookiesDir = './cookies';
+    const cookiesDir = '/app/cookies';
     if (!fs.existsSync(cookiesDir)) {
       console.log('Cookies directory not found, skipping cookie loading');
       return;
@@ -69,10 +77,18 @@ async function loadCookies() {
         const ownId = file.substring(5, file.length - 5);
         try {
           const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
-          await loginZaloAccount(null, cookie);
+          await loginZaloAccount(null, cookie, (event) => {
+             // Handle background events during auto-reconnect
+             if (event.type === 'error') {
+                 console.error(`[Zalo:${ownId}] Background error:`, event.data.message);
+             }
+             broadcastEvent('zalo_status', { ownId, ...event });
+          });
           console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie.`);
+          addLog('Auth', `Tài khoản ${ownId} đã đăng nhập lại từ cookie`);
         } catch (error) {
           console.error(`Lỗi khi đăng nhập lại tài khoản ${ownId}:`, error);
+          addLog('Auth Error', `Lỗi đăng nhập tài khoản ${ownId}: ${error.message}`);
         }
       }
     }
@@ -88,6 +104,9 @@ async function startServer() {
     
     server.listen(INTERNAL_PORT, LISTEN_IP, () => {
       console.log(`Actually listening on port ${INTERNAL_PORT}`);
+      addLog('System', `Server đang lắng nghe trên cổng ${INTERNAL_PORT}`);
+      startTaskPuller();
+      startHealthCheck();
     });
 
     server.on('error', (error) => {

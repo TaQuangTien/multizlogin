@@ -1,173 +1,427 @@
 <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>API Documentation</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
-        h1, h2, h3 { color: #333; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-        pre { background: #f4f4f4; padding: 10px; }
-      </style>
-    </head>
-    <body>
-      <h1>Tài liệu API Zalo Server</h1>
-      <h2>Mục lục</h2>
-      <ol>
-        <li><a href="#findUser">findUser</a></li>
-        <li><a href="#getUserInfo">getUserInfo</a></li>
-        <li><a href="#sendFriendRequest">sendFriendRequest</a></li>
-        <li><a href="#sendMessage">sendMessage</a></li>
-        <li><a href="#createGroup">createGroup</a></li>
-        <li><a href="#getGroupInfo">getGroupInfo</a></li>
-        <li><a href="#addUserToGroup">addUserToGroup</a></li>
-        <li><a href="#removeUserFromGroup">removeUserFromGroup</a></li>
-        <li><a href="#sendImageToUser">sendImageToUser</a></li>
-        <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
-        <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
-        <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
-        <li><a href="#sendFileToUser">sendFileToUser</a></li>
-        <li><a href="#accounts">accounts</a></li>
-      </ol>
 
-      <hr/>
+<head>
+  <meta charset="UTF-8">
+  <title>Zalo Tools v4 — API Documentation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-      <h3 id="findUser">1. findUser</h3>
-      <p><strong>Mục đích:</strong> Tìm kiếm người dùng dựa trên số điện thoại.</p>
-      <p><strong>Endpoint:</strong> POST /findUser</p>
-      <p><strong>Parameters:</strong></p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>phone</td>
-          <td>string</td>
-          <td>Số điện thoại của người dùng.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Ví dụ:</strong></p>
-      <pre>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      line-height: 1.7;
+      margin: 0;
+      padding: 0;
+      background: #f8f9fa;
+      color: #212529;
+    }
+
+    .header-banner {
+      background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+      color: #fff;
+      padding: 36px 40px 28px;
+      margin-bottom: 0;
+    }
+
+    .header-banner h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-banner .subtitle {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+
+    .header-banner .meta {
+      margin-top: 14px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      opacity: 0.75;
+    }
+
+    .header-banner .meta span::before {
+      content: "• ";
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #e8f0fe;
+      color: #0d47a1;
+      border: 1px solid #b3c9f9;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .badge.get {
+      background: #e6f4ea;
+      color: #1b5e20;
+      border-color: #a5d6a7;
+    }
+
+    .badge.post {
+      background: #fff3e0;
+      color: #e65100;
+      border-color: #ffcc80;
+    }
+
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #0d6efd;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 8px;
+      margin-top: 40px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #343a40;
+      margin-top: 32px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      background: #fff;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+    }
+
+    th,
+    td {
+      border: 1px solid #dee2e6;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background-color: #f1f3f5;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    td:first-child {
+      font-family: 'Courier New', monospace;
+      color: #0d6efd;
+    }
+
+    pre {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'Courier New', monospace;
+      background: #e9ecef;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #dee2e6;
+      margin: 36px 0;
+    }
+
+    ol {
+      padding-left: 20px;
+    }
+
+    ol li {
+      margin-bottom: 6px;
+    }
+
+    ol li a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+
+    ol li a:hover {
+      text-decoration: underline;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .disclaimer {
+      background: #fff8e1;
+      border-left: 4px solid #ffc107;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 0.88rem;
+      color: #5d4037;
+      margin-bottom: 28px;
+    }
+
+    .auth-note {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 0.88rem;
+      color: #0d47a1;
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header-banner">
+    <h1>Zalo Tools v4</h1>
+    <p class="subtitle">REST API Server &amp; Web UI để quản lý nhiều tài khoản Zalo — Tích hợp Webhook, Proxy &amp; QR
+      Login</p>
+    <div class="meta">
+      <span>Phiên bản: v4.20260410</span>
+      <span>Phát triển bởi: Tiến Tạ</span>
+      <span>Năm: 2026</span>
+      <span>Powered by: zca-js (unofficial Zalo API)</span>
+    </div>
+  </div>
+  <div class="container">
+
+    <div class="disclaimer">
+      <strong>Lưu ý:</strong> Dự án sử dụng API không chính thức của Zalo. Việc sử dụng có thể vi phạm điều khoản dịch
+      vụ của Zalo và dẫn đến việc tài khoản bị khóa. Hãy cân nhắc kỹ trước khi triển khai.
+    </div>
+
+    <div class="auth-note">
+      <strong>Xác thực API:</strong> Tất cả các endpoint đều yêu cầu header <code>x-api-key: YOUR_API_KEY</code>.
+      Giá trị này được cấu hình qua biến môi trường <code>X_API_KEY</code>.
+    </div>
+
+    <h2>Mục lục</h2>
+    <ol>
+      <li><a href="#findUser">findUser</a></li>
+      <li><a href="#getUserInfo">getUserInfo</a></li>
+      <li><a href="#sendFriendRequest">sendFriendRequest</a></li>
+      <li><a href="#sendMessage">sendMessage</a></li>
+      <li><a href="#createGroup">createGroup</a></li>
+      <li><a href="#getGroupInfo">getGroupInfo</a></li>
+      <li><a href="#addUserToGroup">addUserToGroup</a></li>
+      <li><a href="#removeUserFromGroup">removeUserFromGroup</a></li>
+      <li><a href="#sendImageToUser">sendImageToUser</a></li>
+      <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
+      <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
+      <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
+      <li><a href="#accounts">accounts</a></li>
+    </ol>
+
+    <hr />
+
+    <h3 id="findUser">
+      <div class="endpoint-header">1. findUser <span class="badge post">POST</span></div>
+    </h3>
+    <h2>Mục lục</h2>
+    <ol>
+      <li><a href="#findUser">findUser</a></li>
+      <li><a href="#getUserInfo">getUserInfo</a></li>
+      <li><a href="#sendFriendRequest">sendFriendRequest</a></li>
+      <li><a href="#sendMessage">sendMessage</a></li>
+      <li><a href="#createGroup">createGroup</a></li>
+      <li><a href="#getGroupInfo">getGroupInfo</a></li>
+      <li><a href="#addUserToGroup">addUserToGroup</a></li>
+      <li><a href="#removeUserFromGroup">removeUserFromGroup</a></li>
+      <li><a href="#sendImageToUser">sendImageToUser</a></li>
+      <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
+      <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
+      <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
+      <li><a href="#accounts">accounts</a></li>
+    </ol>
+
+    <hr />
+
+    <h3 id="findUser">1. findUser</h3>
+    <p><strong>Mục đích:</strong> Tìm kiếm người dùng dựa trên số điện thoại.</p>
+    <p><strong>Endpoint:</strong> POST /findUser</p>
+    <p><strong>Parameters:</strong></p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>phone</td>
+        <td>string</td>
+        <td>Số điện thoại của người dùng.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <p><strong>Ví dụ:</strong></p>
+    <pre>
 {
   "phone": "0123456789",
   "ownId": "0000000000000000001"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "phone": "0123456789",
   "ownId": "0000000000000000001"
 }' http://localhost:3000/findUser
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="getUserInfo">2. getUserInfo</h3>
-      <p><strong>Mục đích:</strong> Lấy thông tin chi tiết của một người dùng.</p>
-      <p><strong>Endpoint:</strong> POST /getUserInfo</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>userId</td>
-          <td>string</td>
-          <td>ID của người dùng cần lấy thông tin.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="getUserInfo">
+      <div class="endpoint-header">2. getUserInfo <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy thông tin chi tiết của một người dùng.</p>
+    <p><strong>Endpoint:</strong> POST /getUserInfo</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>userId</td>
+        <td>string</td>
+        <td>ID của người dùng cần lấy thông tin.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "userId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getUserInfo
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendFriendRequest">3. sendFriendRequest</h3>
-      <p><strong>Mục đích:</strong> Gửi lời mời kết bạn đến người dùng.</p>
-      <p><strong>Endpoint:</strong> POST /sendFriendRequest</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>userId</td>
-          <td>string</td>
-          <td>ID của người dùng nhận lời mời.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="sendFriendRequest">
+      <div class="endpoint-header">3. sendFriendRequest <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi lời mời kết bạn đến người dùng.</p>
+    <p><strong>Endpoint:</strong> POST /sendFriendRequest</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>userId</td>
+        <td>string</td>
+        <td>ID của người dùng nhận lời mời.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "userId": "0000000000000000002",
   "ownId": "0000000000000000001"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000002",
   "ownId": "0000000000000000001"
 }' http://localhost:3000/sendFriendRequest
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendMessage">4. sendMessage</h3>
-      <p><strong>Mục đích:</strong> Gửi tin nhắn văn bản (hoặc object) đến người dùng hoặc nhóm.</p>
-      <p><strong>Endpoint:</strong> POST /sendmessage</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>message</td>
-          <td>string | Object</td>
-          <td>Nội dung tin nhắn (có thể là string hoặc object MessageContent).</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của người dùng/nhóm để gửi tin.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>type</td>
-          <td>string</td>
-          <td>Loại thread ("0" hoặc "1"). Mặc định là "User".</td>
-          <td>Không</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="sendMessage">
+      <div class="endpoint-header">4. sendMessage <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi tin nhắn văn bản (hoặc object) đến người dùng hoặc nhóm.</p>
+    <p><strong>Endpoint:</strong> POST /sendmessage</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>message</td>
+        <td>string | Object</td>
+        <td>Nội dung tin nhắn (có thể là string hoặc object MessageContent).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của người dùng/nhóm để gửi tin.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>type</td>
+        <td>string</td>
+        <td>Loại thread ("0" hoặc "1"). Mặc định là "User".</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "message": "Xin chào",
   "threadId": "0000000000000000001",
@@ -175,8 +429,8 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "message": "Xin chào",
   "threadId": "0000000000000000001",
@@ -185,39 +439,46 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/sendmessage
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="createGroup">5. createGroup</h3>
-      <p><strong>Mục đích:</strong> Tạo một nhóm mới.</p>
-      <p><strong>Endpoint:</strong> POST /createGroup</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>members</td>
-          <td>string[]</td>
-          <td>Mảng ID các thành viên (không bao gồm bản thân).</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>name</td>
-          <td>string</td>
-          <td>Tên của nhóm.</td>
-          <td>Không</td>
-        </tr>
-        <tr>
-          <td>avatarPath</td>
-          <td>string</td>
-          <td>Đường dẫn ảnh nhóm (nếu có).</td>
-          <td>Không</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="createGroup">
+      <div class="endpoint-header">5. createGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Tạo một nhóm mới.</p>
+    <p><strong>Endpoint:</strong> POST /createGroup</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>members</td>
+        <td>string[]</td>
+        <td>Mảng ID các thành viên (không bao gồm bản thân).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>Tên của nhóm.</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>avatarPath</td>
+        <td>string</td>
+        <td>Đường dẫn ảnh nhóm (nếu có).</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "members": ["0000000000000000002", "0000000000000000003"],
   "name": "Nhóm Mới",
@@ -225,8 +486,8 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   "ownId": "0000000000000000001"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "members": ["0000000000000000002", "0000000000000000003"],
   "name": "Nhóm Mới",
@@ -235,75 +496,89 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/createGroup
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="getGroupInfo">6. getGroupInfo</h3>
-      <p><strong>Mục đích:</strong> Lấy thông tin chi tiết của các nhóm.</p>
-      <p><strong>Endpoint:</strong> POST /getGroupInfo</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>groupId</td>
-          <td>string | string[]</td>
-          <td>ID của nhóm hoặc mảng các ID.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="getGroupInfo">
+      <div class="endpoint-header">6. getGroupInfo <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy thông tin chi tiết của các nhóm.</p>
+    <p><strong>Endpoint:</strong> POST /getGroupInfo</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>groupId</td>
+        <td>string | string[]</td>
+        <td>ID của nhóm hoặc mảng các ID.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "groupId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getGroupInfo
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="addUserToGroup">7. addUserToGroup</h3>
-      <p><strong>Mục đích:</strong> Thêm thành viên vào nhóm.</p>
-      <p><strong>Endpoint:</strong> POST /addUserToGroup</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>groupId</td>
-          <td>string</td>
-          <td>ID của nhóm.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>memberId</td>
-          <td>string | string[]</td>
-          <td>ID của thành viên (hoặc mảng ID) cần thêm vào nhóm.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="addUserToGroup">
+      <div class="endpoint-header">7. addUserToGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Thêm thành viên vào nhóm.</p>
+    <p><strong>Endpoint:</strong> POST /addUserToGroup</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>groupId</td>
+        <td>string</td>
+        <td>ID của nhóm.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>memberId</td>
+        <td>string | string[]</td>
+        <td>ID của thành viên (hoặc mảng ID) cần thêm vào nhóm.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
@@ -311,41 +586,48 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/addUserToGroup
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="removeUserFromGroup">8. removeUserFromGroup</h3>
-      <p><strong>Mục đích:</strong> Xóa thành viên khỏi nhóm.</p>
-      <p><strong>Endpoint:</strong> POST /removeUserFromGroup</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>groupId</td>
-          <td>string</td>
-          <td>ID của nhóm.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>memberId</td>
-          <td>string | string[]</td>
-          <td>ID của thành viên (hoặc mảng ID) cần xóa khỏi nhóm.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <pre>
+    <h3 id="removeUserFromGroup">
+      <div class="endpoint-header">8. removeUserFromGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Xóa thành viên khỏi nhóm.</p>
+    <p><strong>Endpoint:</strong> POST /removeUserFromGroup</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>groupId</td>
+        <td>string</td>
+        <td>ID của nhóm.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>memberId</td>
+        <td>string | string[]</td>
+        <td>ID của thành viên (hoặc mảng ID) cần xóa khỏi nhóm.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
 {
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
@@ -353,66 +635,75 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/removeUserFromGroup
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendImageToUser">9. sendImageToUser</h3>
-      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một người dùng Zalo.</p>
-      <p><strong>Endpoint:</strong> POST /sendImageToUser</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>imagePath</td>
-          <td>string</td>
-          <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
-          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
-        </tr>
-        <tr>
-          <td>imageData</td>
-          <td>string</td>
-          <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/jpeg;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
-          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của người dùng nhận tin nhắn.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng (JPEG, PNG, GIF) trước khi gửi. Đảm bảo cung cấp prefix MIME type trong <code>imageData</code> để xác định đúng định dạng.</p>
-      <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
-      <pre>
+    <h3 id="sendImageToUser">
+      <div class="endpoint-header">9. sendImageToUser <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một người dùng Zalo.</p>
+    <p><strong>Endpoint:</strong> POST /sendImageToUser</p>
+    <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>imagePath</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+        <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+      </tr>
+      <tr>
+        <td>imageData</td>
+        <td>string</td>
+        <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/jpeg;base64,...</code>). Hỗ
+          trợ JPEG, PNG, GIF.</td>
+        <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của người dùng nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng (JPEG, PNG, GIF) trước khi
+      gửi. Đảm bảo cung cấp prefix MIME type trong <code>imageData</code> để xác định đúng định dạng.</p>
+    <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
+    <pre>
 {
   "imagePath": "https://example.com/image.jpg",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ (sử dụng imageData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ (sử dụng imageData):</strong></p>
+    <pre>
 {
   "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePath": "https://example.com/image.jpg",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImageToUser
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
   "threadId": "0000000000000000001",
@@ -420,50 +711,59 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/sendImageToUser
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendImagesToUser">10. sendImagesToUser</h3>
-      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một người dùng Zalo.</p>
-      <p><strong>Endpoint:</strong> POST /sendImagesToUser</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>imagePaths</td>
-          <td>string[]</td>
-          <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
-          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
-        </tr>
-        <tr>
-          <td>imagesData</td>
-          <td>string[]</td>
-          <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ: <code>data:image/png;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
-          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của người dùng nhận tin nhắn.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
-      <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
-      <pre>
+    <h3 id="sendImagesToUser">
+      <div class="endpoint-header">10. sendImagesToUser <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một người dùng Zalo.</p>
+    <p><strong>Endpoint:</strong> POST /sendImagesToUser</p>
+    <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>imagePaths</td>
+        <td>string[]</td>
+        <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+        <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+      </tr>
+      <tr>
+        <td>imagesData</td>
+        <td>string[]</td>
+        <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ:
+          <code>data:image/png;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+        <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của người dùng nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo
+      cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
+    <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
+    <pre>
 {
   "imagePaths": ["https://example.com/image1.jpg", "https://example.com/image2.png"],
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
+    <pre>
 {
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
@@ -473,16 +773,16 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePaths": ["https://example.com/image1.jpg", "https://example.com/image2.png"],
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImagesToUser
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
@@ -493,66 +793,75 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/sendImagesToUser
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendImageToGroup">11. sendImageToGroup</h3>
-      <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một nhóm Zalo.</p>
-      <p><strong>Endpoint:</strong> POST /sendImageToGroup</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>imagePath</td>
-          <td>string</td>
-          <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
-          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
-        </tr>
-        <tr>
-          <td>imageData</td>
-          <td>string</td>
-          <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/gif;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
-          <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của nhóm nhận tin nhắn.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong <code>imageData</code>.</p>
-      <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
-      <pre>
+    <h3 id="sendImageToGroup">
+      <div class="endpoint-header">11. sendImageToGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một nhóm Zalo.</p>
+    <p><strong>Endpoint:</strong> POST /sendImageToGroup</p>
+    <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>imagePath</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+        <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+      </tr>
+      <tr>
+        <td>imageData</td>
+        <td>string</td>
+        <td>Dữ liệu hình ảnh dạng base64, phải có prefix MIME type (ví dụ: <code>data:image/gif;base64,...</code>). Hỗ
+          trợ JPEG, PNG, GIF.</td>
+        <td>Không (yêu cầu một trong imagePath hoặc imageData)</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của nhóm nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <p><strong>Ghi chú:</strong> Hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung
+      cấp prefix MIME type trong <code>imageData</code>.</p>
+    <p><strong>Ví dụ (sử dụng imagePath):</strong></p>
+    <pre>
 {
   "imagePath": "https://example.com/group-image.jpg",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ (sử dụng imageData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ (sử dụng imageData):</strong></p>
+    <pre>
 {
   "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePath": "https://example.com/group-image.jpg",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImageToGroup
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...",
   "threadId": "0000000000000000000",
@@ -560,50 +869,59 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/sendImageToGroup
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendImagesToGroup">12. sendImagesToGroup</h3>
-      <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một nhóm Zalo.</p>
-      <p><strong>Endpoint:</strong> POST /sendImagesToGroup</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>imagePaths</td>
-          <td>string[]</td>
-          <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
-          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
-        </tr>
-        <tr>
-          <td>imagesData</td>
-          <td>string[]</td>
-          <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ: <code>data:image/jpeg;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
-          <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của nhóm nhận tin nhắn.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
-      <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
-      <pre>
+    <h3 id="sendImagesToGroup">
+      <div class="endpoint-header">12. sendImagesToGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một nhóm Zalo.</p>
+    <p><strong>Endpoint:</strong> POST /sendImagesToGroup</p>
+    <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>imagePaths</td>
+        <td>string[]</td>
+        <td>Mảng đường dẫn hoặc URL của các hình ảnh (hỗ trợ JPEG, PNG, GIF).</td>
+        <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+      </tr>
+      <tr>
+        <td>imagesData</td>
+        <td>string[]</td>
+        <td>Mảng dữ liệu hình ảnh dạng base64, mỗi phần tử phải có prefix MIME type (ví dụ:
+          <code>data:image/jpeg;base64,...</code>). Hỗ trợ JPEG, PNG, GIF.</td>
+        <td>Không (yêu cầu một trong imagePaths hoặc imagesData)</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của nhóm nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin nhắn (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <p><strong>Ghi chú:</strong> Các hình ảnh từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Đảm bảo
+      cung cấp prefix MIME type trong mỗi phần tử của <code>imagesData</code>.</p>
+    <p><strong>Ví dụ (sử dụng imagePaths):</strong></p>
+    <pre>
 {
   "imagePaths": ["https://example.com/group-image1.jpg", "https://example.com/group-image2.png"],
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ (sử dụng imagesData):</strong></p>
+    <pre>
 {
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
@@ -613,16 +931,16 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   "ownId": "0000000000000000009"
 }
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePaths": ["https://example.com/group-image1.jpg", "https://example.com/group-image2.png"],
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/sendImagesToGroup
       </pre>
-      <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
+    <pre>
 curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
@@ -633,88 +951,16 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 }' http://localhost:3000/sendImagesToGroup
       </pre>
 
-      <hr/>
+    <hr />
 
-      <h3 id="sendFileToUser">13. sendFileToUser</h3>
-      <p><strong>Mục đích:</strong> Gửi một file đến một người dùng Zalo.</p>
-      <p><strong>Endpoint:</strong> POST /sendFileToUser</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <table>
-        <tr><th>Field</th><th>Loại</th><th>Mô tả</th><th>Bắt buộc</th></tr>
-        <tr>
-          <td>filePath</td>
-          <td>string</td>
-          <td>Đường dẫn hoặc URL của file (hỗ trợ PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, ZIP, RAR, 7Z, MP3, WAV, MP4, AVI, MOV và các định dạng hình ảnh).</td>
-          <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
-        </tr>
-        <tr>
-          <td>fileData</td>
-          <td>string</td>
-          <td>Dữ liệu file dạng base64. Có thể có prefix MIME type (ví dụ: <code>data:application/pdf;base64,...</code>) hoặc chỉ là base64 thuần.</td>
-          <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
-        </tr>
-        <tr>
-          <td>mimeType</td>
-          <td>string</td>
-          <td>MIME type của file (ví dụ: <code>application/pdf</code>, <code>application/vnd.openxmlformats-officedocument.wordprocessingml.document</code>). Chỉ cần thiết khi <code>fileData</code> không có prefix MIME type.</td>
-          <td>Không</td>
-        </tr>
-        <tr>
-          <td>threadId</td>
-          <td>string</td>
-          <td>ID của người dùng nhận file.</td>
-          <td>Có</td>
-        </tr>
-        <tr>
-          <td>ownId</td>
-          <td>string</td>
-          <td>ID tài khoản Zalo gửi file (lấy từ /accounts).</td>
-          <td>Có</td>
-        </tr>
-      </table>
-      <p><strong>Các MIME type được hỗ trợ:</strong></p>
-      <ul>
-        <li><strong>Documents:</strong> application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation, text/plain, text/csv</li>
-        <li><strong>Archives:</strong> application/zip, application/x-rar-compressed, application/x-7z-compressed</li>
-        <li><strong>Audio:</strong> audio/mpeg, audio/wav, audio/ogg, audio/mp4</li>
-        <li><strong>Video:</strong> video/mp4, video/avi, video/quicktime, video/x-msvideo</li>
-        <li><strong>Images:</strong> image/jpeg, image/png, image/gif, image/webp, image/svg+xml</li>
-      </ul>
-      <p><strong>Ghi chú:</strong> File từ base64 sẽ được lưu tạm với định dạng tương ứng trước khi gửi. Nếu không xác định được MIME type, file sẽ được lưu với extension <code>.bin</code>.</p>
-      <p><strong>Ví dụ (sử dụng filePath):</strong></p>
-      <pre>
-{
-  "filePath": "https://example.com/document.pdf",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}
-      </pre>
-      <p><strong>Ví dụ (sử dụng fileData với prefix):</strong></p>
-      <pre>
-{
-  "fileData": "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}
-      </pre>
-      <p><strong>Ví dụ (sử dụng fileData không có prefix + mimeType):</strong></p>
-      <pre>
-{
-  "fileData": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAov...",
-  "mimeType": "application/pdf",
-  "threadId": "0000000000000000001",
-  "ownId": "0000000000000000009"
-}
-      </pre>
-
-      <hr/>
-
-      <h3 id="accounts">14. accounts</h3>
-      <p><strong>Mục đích:</strong> Lấy danh sách tài khoản đã đăng nhập.</p>
-      <p><strong>Endpoint:</strong> GET /accounts</p>
-      <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
-      <p><strong>Response:</strong></p>
-      <pre>
+    <h3 id="accounts">
+      <div class="endpoint-header">13. accounts <span class="badge get">GET</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy danh sách tài khoản đã đăng nhập.</p>
+    <p><strong>Endpoint:</strong> GET /accounts</p>
+    <p><strong>Header:</strong> Yêu cầu <code>x-api-key</code> để xác thực.</p>
+    <p><strong>Response:</strong></p>
+    <pre>
 [
   {
     "ownId": "0000000000000000001",
@@ -728,9 +974,50 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
   }
 ]
       </pre>
-      <p><strong>Ví dụ curl:</strong></p>
-      <pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
 curl -H "x-api-key: YOUR_API_KEY" http://localhost:3000/accounts
       </pre>
-    </body>
+
+    <hr />
+
+    <div
+      style="margin-top:48px; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%); border-radius:12px; padding:32px; color:#e8e8e8;">
+      <h2 style="color:#ffc107; border:none; margin-top:0; padding-bottom:0;">GAS Template — Trung tâm Marketing tự động
+      </h2>
+      <p style="font-size:0.95rem; line-height:1.8; margin-top:12px;">
+        Docker Server này là <strong style="color:#4fc3f7;">mã nguồn mở</strong>. Để khai thác toàn bộ sức mạnh của hệ
+        thống, bạn có thể cần
+        <strong style="color:#ffc107;">GAS Template</strong> — bộ Google Apps Script biến Google Sheets thành trung tâm
+        CRM + Marketing Automation hoàn chỉnh:
+      </p>
+      <ul style="font-size:0.9rem; line-height:2; padding-left:20px; margin:16px 0;">
+        <li>CRM tự động — phân loại khách hàng HOT / WARM / COLD, gán Tags</li>
+        <li>Tự động tìm UID, gửi kết bạn, gửi tin nhắn theo quy trình FSM thông minh</li>
+        <li>Auto Reply — trả lời tự động theo từ khóa, hẹn giờ, ngày trong tuần</li>
+        <li>Quản lý hạn mức (Quota) — bảo vệ tài khoản khỏi bị khóa</li>
+        <li>Dashboard giám sát real-time với biểu đồ và nhật ký hệ thống</li>
+        <li>Gửi tin nhắn nhóm hàng loạt, theo dõi nhóm tự động</li>
+      </ul>
+      <div
+        style="text-align:center; margin-top:24px; padding:20px; background:rgba(255,255,255,0.08); border-radius:8px;">
+        <div style="font-size:1.5rem; font-weight:700; color:#ffc107; margin-bottom:8px;">500.000 VNĐ</div>
+        <div style="font-size:0.85rem; color:#aaa; margin-bottom:16px;">Một lần — Sử dụng vĩnh viễn</div>
+        <div style="font-size:1.1rem; font-weight:600; color:#fff;">
+          Liên hệ: <span style="color:#4fc3f7;">Tiến Tạ</span> — Zalo / Điện thoại:
+          <span style="color:#ffc107; font-size:1.2rem;">0387 553 113</span>
+        </div>
+      </div>
+    </div>
+
+    <hr />
+    <p style="text-align:center; color:#6c757d; font-size:0.82rem; margin-top:40px;">
+      Zalo Tools v4 &nbsp;|&nbsp; Phiên bản v4.20260410 &nbsp;|&nbsp; Phát triển bởi <strong>Tiến Tạ</strong> &mdash;
+      2026
+      <br />Liên hệ: Zalo / Điện thoại <strong>0387 553 113</strong>
+    </p>
+
+  </div><!-- end .container -->
+</body>
+
 </html>

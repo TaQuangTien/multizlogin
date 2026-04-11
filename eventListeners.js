@@ -1,60 +1,60 @@
 // eventListeners.js
-import { GroupEventType } from 'zca-js';
-import { getWebhookUrl, triggerN8nWebhook } from './helpers.js';
+import { getWebhookConfig, triggerN8nWebhook } from './helpers.js';
 import fs from 'fs';
 import { loginZaloAccount, zaloAccounts } from './api/zalo/zalo.js';
 import { broadcastLoginSuccess } from './server.js';
+import { addLog } from './routes-ui.js';
 
 export const reloginAttempts = new Map();
 const RELOGIN_COOLDOWN = 5 * 60 * 1000;
 
 export function setupEventListeners(api, loginResolve) {
+  const ownId = api.getOwnId();
+
   api.listener.on('message', (msg) => {
-    const messageWebhookUrl = getWebhookUrl('messageWebhookUrl');
-    if (messageWebhookUrl) {
-      const ownId = api.getOwnId(); // Lấy ownId từ api
-      if (ownId) {
-        // Kiểm tra isAPI cho tin nhắn isSelf
-        let isAPI = false;
-	
-        if (msg.isSelf && msg.data?.content) {
-      	  const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-      
-      	  if (account.lastAPIMessage == msg.data.content)
-      		isAPI = true;	
-        }
-        triggerN8nWebhook({ ...msg, AccountID: ownId, isAPI }, messageWebhookUrl);
-      } else {
-        console.error('Không thể lấy AccountID cho sự kiện message');
-        triggerN8nWebhook(msg, messageWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
+    const config = getWebhookConfig(ownId);
+    const webhookUrl = config?.url;
+
+    // Log message
+    if (msg.isSelf) {
+      const content = msg.data?.content ? msg.data.content : (msg.data?.msgType === 'chat.photo' ? '[Hình ảnh]' : '[File/Khác]');
+      addLog('Gửi tin nhắn', content, ownId, { type: msg.data?.msgType, toId: msg.threadId, msgId: msg.data?.msgId });
+    } else {
+      const content = msg.data?.content ? msg.data.content : (msg.data?.msgType === 'chat.photo' ? '[Hình ảnh]' : '[File/Khác]');
+      addLog('Nhận tin nhắn', content, ownId, { type: msg.data?.msgType, fromId: msg.threadId, msgId: msg.data?.msgId });
+    }
+
+    if (webhookUrl) {
+      let isAPI = false;
+      if (msg.isSelf && msg.data?.content) {
+        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+        const lastMsg = (account?.lastAPIMessage || "").toString();
+        const currentContent = (msg.data?.content || "").toString();
+        if (lastMsg && lastMsg === currentContent)
+          isAPI = true;
       }
+      triggerN8nWebhook({ ...msg, AccountID: ownId, isAPI, isself: msg.isSelf }, webhookUrl);
     }
   });
 
   api.listener.on('group_event', (data) => {
-    const groupEventWebhookUrl = getWebhookUrl('groupEventWebhookUrl');
-    if (groupEventWebhookUrl) {
-      const ownId = api.getOwnId(); // Lấy ownId từ api
-      if (ownId) {
-        triggerN8nWebhook({ ...data, AccountID: ownId }, groupEventWebhookUrl); // Thêm AccountID vào dữ liệu
-      } else {
-        console.error('Không thể lấy AccountID cho sự kiện group_event');
-        triggerN8nWebhook(data, groupEventWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
-      }
+    const config = getWebhookConfig(ownId);
+    const webhookUrl = config?.url;
+    const receiveGroupEvent = config?.settings?.receiveGroupEvent ?? true;
+
+    if (webhookUrl && receiveGroupEvent) {
+      triggerN8nWebhook({ ...data, AccountID: ownId }, webhookUrl);
     }
   });
 
   api.listener.on('reaction', (reaction) => {
-    const reactionWebhookUrl = getWebhookUrl('reactionWebhookUrl');
-    console.log('Nhận reaction:', reaction);
-    if (reactionWebhookUrl) {
-      const ownId = api.getOwnId(); // Lấy ownId từ api
-      if (ownId) {
-        triggerN8nWebhook({ ...reaction, AccountID: ownId }, reactionWebhookUrl); // Thêm AccountID vào dữ liệu
-      } else {
-        console.error('Không thể lấy AccountID cho sự kiện reaction');
-        triggerN8nWebhook(reaction, reactionWebhookUrl); // Gửi dữ liệu gốc nếu không có AccountID
-      }
+    const config = getWebhookConfig(ownId);
+    const webhookUrl = config?.url;
+    const receiveReaction = config?.settings?.receiveReaction ?? true;
+
+    console.log(`Nhận reaction cho ${ownId}:`, reaction);
+    if (webhookUrl && receiveReaction) {
+      triggerN8nWebhook({ ...reaction, AccountID: ownId }, webhookUrl);
     }
   });
 
@@ -64,8 +64,21 @@ export function setupEventListeners(api, loginResolve) {
     broadcastLoginSuccess();
   });
 
-  api.listener.onClosed(() => {
-    console.log('Closed - API listener đã ngắt kết nối');
+  api.listener.onClosed((code, reason) => {
+    console.log(`Closed - API listener đã ngắt kết nối. Code: ${code}, Reason: ${reason}`);
+
+    // Nếu bị ngắt kết nối do trùng lặp (3000) hoặc bị đá (3003), báo cáo logout về webhook
+    if (code === 3000 || code === 3003) {
+      const config = getWebhookConfig(ownId);
+      if (config?.url) {
+        triggerN8nWebhook({
+          action: 'logout',
+          ownId: ownId,
+          reason: `Bị ngắt kết nối (Code: ${code}, Reason: ${reason})`
+        }, config.url);
+      }
+    }
+
     handleRelogin(api);
   });
 
@@ -101,7 +114,7 @@ async function handleRelogin(api) {
     reloginAttempts.set(ownId, now);
     const accountInfo = zaloAccounts.find((acc) => acc.ownId === ownId);
     const customProxy = accountInfo?.proxy || null;
-    const cookiesDir = './cookies';
+    const cookiesDir = '/app/cookies';
     const cookieFile = `${cookiesDir}/cred_${ownId}.json`;
 
     if (!fs.existsSync(cookieFile)) {
@@ -111,8 +124,20 @@ async function handleRelogin(api) {
 
     const cookie = JSON.parse(fs.readFileSync(cookieFile, 'utf-8'));
     console.log(`Đang đăng nhập lại tài khoản ${ownId} với proxy ${customProxy || 'không có'}...`);
-    await loginZaloAccount(customProxy, cookie);
-    console.log(`Đã đăng nhập lại thành công tài khoản ${ownId}`);
+    try {
+      await loginZaloAccount(customProxy, cookie);
+      console.log(`Đã đăng nhập lại thành công tài khoản ${ownId}`);
+    } catch (loginError) {
+      console.error(`Đăng nhập lại thất bại cho ${ownId}:`, loginError.message);
+      const config = getWebhookConfig(ownId);
+      if (config?.url) {
+        triggerN8nWebhook({
+          action: 'logout',
+          ownId: ownId,
+          reason: `Đăng nhập lại thất bại: ${loginError.message}`
+        }, config.url);
+      }
+    }
   } catch (error) {
     console.error('Lỗi khi thử đăng nhập lại:', error);
   }

@@ -6,7 +6,21 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const configPath = path.join(__dirname, 'webhook-config.json');
+const configPath = path.join(__dirname, 'zalo_data', 'webhook-config.json');
+const multiWebhookPath = '/app/zalo_data/webhooks.json';
+
+export function getWebhookConfig(ownId) {
+    try {
+        if (fs.existsSync(multiWebhookPath)) {
+            const content = fs.readFileSync(multiWebhookPath, 'utf8');
+            const config = JSON.parse(content);
+            return config[ownId] || null;
+        }
+    } catch (error) {
+        console.error("Error reading multi-webhook config:", error);
+    }
+    return null;
+}
 
 export function getWebhookUrl(key) {
     try {
@@ -41,13 +55,31 @@ export async function triggerN8nWebhook(msg, webhookUrl) {
 
 export async function saveImage(url) {
     try {
+        const tmpDir = path.resolve('./tmp_images');
+        if (!fs.existsSync(tmpDir)) {
+            fs.mkdirSync(tmpDir, { recursive: true });
+        }
+
         const timestamp = Date.now();
-        const imgPath = `./${timestamp}.png`;
-        const { data } = await axios.get(url, { responseType: "arraybuffer" });
-        fs.writeFileSync(imgPath, Buffer.from(data, "utf-8"));
+        let ext = '.png';
+        try {
+            const urlObj = new URL(url);
+            const pathname = urlObj.pathname;
+            if (pathname.includes('.')) {
+                const parts = pathname.split('.');
+                const possibleExt = '.' + parts[parts.length - 1];
+                if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(possibleExt.toLowerCase())) {
+                    ext = possibleExt;
+                }
+            }
+        } catch (_) {}
+
+        const imgPath = path.join(tmpDir, `${timestamp}${ext}`);
+        const { data } = await axios.get(url, { responseType: "arraybuffer", timeout: 10000 });
+        fs.writeFileSync(imgPath, Buffer.from(data));
         return imgPath;
     } catch (error) {
-        console.error(error);
+        console.error(`[saveImage] Error:`, error.message);
         return null;
     }
 }
