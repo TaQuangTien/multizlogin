@@ -234,6 +234,8 @@ zalo-tools-v4/
 
 Docker Server này là **mã nguồn mở** — bạn tự do sử dụng, triển khai và tích hợp vào bất kỳ hệ thống nào (N8n, Make, custom webhook, v.v.). Nếu bạn cần một **giải pháp marketing Zalo dùng ngay, không cần code**, **GAS Template** là lựa chọn hoàn hảo — bộ Google Apps Script biến Google Sheets thành trung tâm điều khiển tự động.
 
+![GAS TEMPLATE](GAS_Demo.png)
+
 ### Cách hoạt động
 
 Bạn nhập **số điện thoại + nội dung tin nhắn** vào Google Sheets. Hệ thống tự xử lý phần còn lại:
@@ -288,7 +290,7 @@ Không cần IP tĩnh, không cần domain — Docker chủ động kéo việc 
 - Hướng dẫn triển khai chi tiết
 - Hỗ trợ kỹ thuật ban đầu
 
-### Giá: **500.000 VND** — một lần, sử dụng vĩnh viễn
+### Giá: **500.000 VND** — mua một lần, bảo hành 1 năm, nhận các bản cập nhật thường xuyên sau đó.
 
 ### Liên hệ:
 
