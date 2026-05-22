@@ -2,7 +2,7 @@ import { Zalo, ThreadType } from 'zca-js';
 import { proxyService } from '../../proxyService.js';
 import { setupEventListeners } from '../../eventListeners.js';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { saveImage, removeImage } from '../../helpers.js';
+import { saveImage, removeImage, saveFileFromUrl, fileTypeToExtension, getWebhookConfigs } from '../../helpers.js';
 import nodefetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
@@ -16,45 +16,11 @@ const DISCONNECT_WINDOW_MS = 5 * 60_000; // 5 minutes
 export const zaloAccounts = [];
 const disconnectHistory = new Map();
 
-// Ánh xạ MIME type sang phần mở rộng file
+// MIME types mapping are now managed in helpers.js or locally for base64
 const mimeToExtension = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif'
-};
-
-// Ánh xạ MIME type sang phần mở rộng file cho các loại file phổ biến
-const fileTypeToExtension = {
-    // Documents
-    'application/pdf': '.pdf',
-    'application/msword': '.doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.ms-excel': '.xls',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-    'application/vnd.ms-powerpoint': '.ppt',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
-    'text/plain': '.txt',
-    'text/csv': '.csv',
-    // Archives
-    'application/zip': '.zip',
-    'application/x-rar-compressed': '.rar',
-    'application/x-7z-compressed': '.7z',
-    // Audio
-    'audio/mpeg': '.mp3',
-    'audio/wav': '.wav',
-    'audio/ogg': '.ogg',
-    'audio/mp4': '.m4a',
-    // Video
-    'video/mp4': '.mp4',
-    'video/avi': '.avi',
-    'video/quicktime': '.mov',
-    'video/x-msvideo': '.avi',
-    // Images
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/gif': '.gif',
-    'image/webp': '.webp',
-    'image/svg+xml': '.svg'
 };
 
 // Hàm lưu dữ liệu base64 thành file (hỗ trợ mọi loại file)
@@ -397,6 +363,50 @@ export async function undoFriendRequest(req, res) {
     }
 }
 
+export async function changeFriendAlias(req, res) {
+    try {
+        const { uid, userId, alias, ownId } = req.body;
+        const targetUid = uid || userId;
+
+        if (!targetUid || !alias || !ownId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu dữ liệu: userId/uid, alias và ownId là bắt buộc'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        // Gọi API đổi tên gợi nhớ của zca-js
+        const result = await account.api.changeFriendAlias(alias, targetUid);
+
+        res.json({
+            success: true,
+            message: 'Đổi tên gợi nhớ thành công',
+            data: {
+                uid: targetUid,
+                alias,
+                result
+            }
+        });
+
+    } catch (error) {
+        console.error('Lỗi changeFriendAlias:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
 export async function sendFileToUser(req, res) {
     try {
         const { filePath, fileData, mimeType, threadId, ownId } = req.body;
@@ -410,7 +420,7 @@ export async function sendFileToUser(req, res) {
         const timestamp = Date.now();
 
         if (filePath) {
-            actualFilePath = await saveImage(filePath);
+            actualFilePath = await saveFileFromUrl(filePath);
         } else if (fileData) {
             actualFilePath = await saveBase64File(fileData, `file_${timestamp}`, mimeType);
         }
@@ -437,36 +447,475 @@ export async function sendFileToUser(req, res) {
     }
 }
 
+export async function sendFileToGroup(req, res) {
+    try {
+        const { filePath, fileData, mimeType, threadId, ownId } = req.body;
+        if ((!filePath && !fileData) || !threadId || !ownId) {
+            return res.status(400).json({
+                error: 'Dữ liệu không hợp lệ: filePath hoặc fileData và threadId là bắt buộc'
+            });
+        }
+
+        let actualFilePath;
+        const timestamp = Date.now();
+
+        if (filePath) {
+            actualFilePath = await saveFileFromUrl(filePath);
+        } else if (fileData) {
+            actualFilePath = await saveBase64File(fileData, `file_${timestamp}`, mimeType);
+        }
+
+        if (!actualFilePath) {
+            return res.status(500).json({ success: false, error: 'Không thể lưu file' });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        const result = await account.api.sendMessage(
+            { msg: "", attachments: [actualFilePath] },
+            threadId,
+            ThreadType.Group
+        ).catch(console.error);
+
+        removeImage(actualFilePath);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// =========================
+// SEND VIDEO TO USER
+// Required: ownId, threadId, videoUrl, thumbnailUrl
+// Optional: message
+// =========================
+export async function sendVideoToUser(req, res) {
+    try {
+        const {
+            ownId,
+            threadId,
+            videoUrl,
+            thumbnailUrl,
+            message
+        } = req.body;
+
+        if (!ownId || !threadId || !videoUrl || !thumbnailUrl) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu dữ liệu: ownId, threadId, videoUrl và thumbnailUrl là bắt buộc'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        // Nếu videoUrl là remote URL hợp lệ (http/https), thử sử dụng trực tiếp api.sendVideo.
+        const isWebUrl = videoUrl && (videoUrl.startsWith('http://') || videoUrl.startsWith('https://'));
+
+        if (isWebUrl) {
+            try {
+                const result = await account.api.sendVideo(
+                    {
+                        videoUrl: videoUrl,
+                        thumbnailUrl: thumbnailUrl || '',
+                        msg: message || ''
+                    },
+                    threadId,
+                    ThreadType.User
+                );
+
+                return res.json({
+                    success: true,
+                    data: result
+                });
+            } catch (err) {
+                console.warn('Lỗi gửi video trực tiếp qua URL, chuyển sang tải về và gửi dưới dạng file đính kèm:', err.message);
+            }
+        }
+
+        // Ngược lại (hoặc nếu gửi trực tiếp URL thất bại), tải video về local
+        // và gửi dưới dạng file đính kèm (Zalo sẽ tự sinh thumbnail trên server).
+        let actualVideoPath = videoUrl;
+        let isTempVideo = false;
+
+        if (isWebUrl) {
+            actualVideoPath = await saveFileFromUrl(videoUrl);
+            isTempVideo = true;
+            if (!actualVideoPath) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể tải video từ URL'
+                });
+            }
+        }
+
+        if (!actualVideoPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy hoặc không thể xử lý video đầu vào'
+            });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: message || '',
+                attachments: [actualVideoPath]
+            },
+            threadId,
+            ThreadType.User
+        );
+
+        if (isTempVideo && actualVideoPath) {
+            removeImage(actualVideoPath);
+        }
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi sendVideoToUser:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// =========================
+// SEND VIDEO TO GROUP
+// Required: ownId, threadId, videoUrl, thumbnailUrl
+// Optional: message
+// =========================
+export async function sendVideoToGroup(req, res) {
+    try {
+        const {
+            ownId,
+            threadId,
+            videoUrl,
+            thumbnailUrl,
+            message
+        } = req.body;
+
+        if (!ownId || !threadId || !videoUrl || !thumbnailUrl) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu dữ liệu: ownId, threadId, videoUrl và thumbnailUrl là bắt buộc'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        // Nếu videoUrl là remote URL hợp lệ (http/https), thử sử dụng trực tiếp api.sendVideo.
+        const isWebUrl = videoUrl && (videoUrl.startsWith('http://') || videoUrl.startsWith('https://'));
+
+        if (isWebUrl) {
+            try {
+                const result = await account.api.sendVideo(
+                    {
+                        videoUrl: videoUrl,
+                        thumbnailUrl: thumbnailUrl || '',
+                        msg: message || ''
+                    },
+                    threadId,
+                    ThreadType.Group
+                );
+
+                return res.json({
+                    success: true,
+                    data: result
+                });
+            } catch (err) {
+                console.warn('Lỗi gửi video trực tiếp qua URL, chuyển sang tải về và gửi dưới dạng file đính kèm:', err.message);
+            }
+        }
+
+        // Ngược lại (hoặc nếu gửi trực tiếp URL thất bại), tải video về local
+        // và gửi dưới dạng file đính kèm (Zalo sẽ tự sinh thumbnail trên server).
+        let actualVideoPath = videoUrl;
+        let isTempVideo = false;
+
+        if (isWebUrl) {
+            actualVideoPath = await saveFileFromUrl(videoUrl);
+            isTempVideo = true;
+            if (!actualVideoPath) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể tải video từ URL'
+                });
+            }
+        }
+
+        if (!actualVideoPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy hoặc không thể xử lý video đầu vào'
+            });
+        }
+
+        const result = await account.api.sendMessage(
+            {
+                msg: message || '',
+                attachments: [actualVideoPath]
+            },
+            threadId,
+            ThreadType.Group
+        );
+
+        if (isTempVideo && actualVideoPath) {
+            removeImage(actualVideoPath);
+        }
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi sendVideoToGroup:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// =========================
+// GET ALIAS LIST
+// Required: ownId
+// =========================
+export async function getAliasList(req, res) {
+    try {
+        const { ownId } = req.body;
+
+        if (!ownId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu ownId'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        const result = await account.api.getAliasList();
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi getAliasList:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// =========================
+// GET ALL FRIENDS
+// Required: ownId
+// =========================
+export async function getAllFriends(req, res) {
+    try {
+        const { ownId } = req.body;
+
+        if (!ownId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu ownId'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        const result = await account.api.getAllFriends();
+
+        res.json({
+            success: true,
+            total: Array.isArray(result) ? result.length : 0,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi getAllFriends:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// =========================
+// GET ALL GROUPS
+// Required: ownId
+// =========================
+export async function getAllGroups(req, res) {
+    try {
+        const { ownId } = req.body;
+
+        if (!ownId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu ownId'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        const result = await account.api.getAllGroups();
+
+        res.json({
+            success: true,
+            total: Array.isArray(result) ? result.length : 0,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi getAllGroups:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// =========================
+// GET SENT FRIEND REQUEST
+// Required: ownId
+// =========================
+export async function getSentFriendRequest(req, res) {
+    try {
+        const { ownId } = req.body;
+
+        if (!ownId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu ownId'
+            });
+        }
+
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                error: 'Không tìm thấy tài khoản Zalo với OwnId này'
+            });
+        }
+
+        const result = await account.api.getSentFriendRequest();
+
+        res.json({
+            success: true,
+            total: Array.isArray(result) ? result.length : 0,
+            data: result
+        });
+    } catch (error) {
+        console.error('Lỗi getSentFriendRequest:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
 export async function sendMessage(req, res) {
     try {
-        const { message, threadId, type, ownId, imagePath } = req.body;
-        if ((!message && !imagePath) || !threadId || !ownId) {
-            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: message hoặc imagePath và threadId là bắt buộc' });
+        const { message, threadId, type, ownId, imagePath, videoUrl, videoThumbnailUrl } = req.body;
+        if ((!message && !imagePath && !videoUrl) || !threadId || !ownId) {
+            return res.status(400).json({ error: 'Dữ liệu không hợp lệ: message, imagePath hoặc videoUrl và threadId là bắt buộc' });
         }
         const account = zaloAccounts.find((acc) => acc.ownId === ownId);
         if (!account) {
             return res.status(400).json({ error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
         }
         const msgType = type || ThreadType.User;
+        const isGroup = msgType === ThreadType.Group || type == 1 || type == '1';
 
-        let imageResult;
+        let videoResult = null;
+        if (videoUrl && videoThumbnailUrl) {
+            const subResMock = {
+                status: function () { return this; },
+                json: function (d) { videoResult = d; return d; }
+            };
+            const videoServiceFunc = isGroup ? sendVideoToGroup : sendVideoToUser;
+            await videoServiceFunc({
+                body: {
+                    ownId,
+                    threadId,
+                    videoUrl,
+                    thumbnailUrl: videoThumbnailUrl,
+                    message: ''
+                }
+            }, subResMock);
+        }
+
+        let imageResult = null;
         if (imagePath) {
             const subResMock = {
                 status: function () { return this; },
                 json: function (d) { imageResult = d; return d; }
             };
-            await sendImageToUser({ body: { imagePath, threadId, ownId } }, subResMock);
+            const imageServiceFunc = isGroup ? sendImageToGroup : sendImageToUser;
+            await imageServiceFunc({ body: { imagePath, threadId, ownId } }, subResMock);
         }
 
-        let textResult;
+        let textResult = null;
         if (message) {
             textResult = await account.api.sendMessage(message, threadId, msgType).catch(e => ({ error: e.message }));
             account.lastAPIMessage = message;
             console.log('SetLastMessage: ' + account.lastAPIMessage);
         }
 
-        const combinedData = { textResult: textResult || null, imageResult: imageResult || null };
-        const isSuccess = (textResult && !textResult.error) || (imageResult && imageResult.success);
+        const combinedData = {
+            textResult: textResult || null,
+            imageResult: imageResult || null,
+            videoResult: videoResult || null
+        };
+        const isSuccess = (textResult && !textResult.error) || 
+                          (imageResult && imageResult.success) || 
+                          (videoResult && videoResult.success);
         res.json({ success: isSuccess !== false, data: combinedData });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -544,13 +993,8 @@ export async function removeUserFromGroup(req, res) {
 // Hàm gửi webhook thông báo trạng thái kết nối
 async function notifyConnectionStatus(ownId, status, error = null) {
     try {
-        const configPath = '/app/zalo_data/webhook-config.json';
-        if (!fs.existsSync(configPath)) return;
-        
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const webhookUrl = config.connectionWebhookUrl || config.messageWebhookUrl; // Fallback to message webhook if connection one isn't set
-        
-        if (!webhookUrl) return;
+        const configs = getWebhookConfigs(ownId);
+        if (configs.length === 0) return;
 
         const payload = {
             event: status === 'connected' ? 'zalo.connected' : 'zalo.disconnected',
@@ -560,12 +1004,17 @@ async function notifyConnectionStatus(ownId, status, error = null) {
         };
         if (error) payload.error = error;
 
-        await nodefetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        console.log(`[Webhook] Sent ${status} for ${ownId}`);
+        for (const config of configs) {
+            const webhookUrl = config.url;
+            if (!webhookUrl) continue;
+
+            await nodefetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log(`[Webhook] Sent ${status} for ${ownId} to ${webhookUrl}`);
+        }
     } catch (err) {
         console.error('[Webhook] Error sending connection status:', err.message);
     }
@@ -695,12 +1144,16 @@ export async function loginZaloAccount(customProxy, cred, onEvent = null) {
         api.listener.on('connected', () => {
              console.log(`[Zalo:${ownId}] Connected`);
              notifyConnectionStatus(ownId, 'connected');
+             const acc = zaloAccounts.find(a => a.ownId === ownId);
+             if (acc) { acc.online = true; acc.lastCheck = new Date().toISOString(); }
              if (onEvent) onEvent({ type: 'connected', data: { ownId } });
         });
 
         api.listener.on('disconnected', () => {
             console.log(`[Zalo:${ownId}] Disconnected`);
             notifyConnectionStatus(ownId, 'disconnected');
+            const acc = zaloAccounts.find(a => a.ownId === ownId);
+            if (acc) { acc.online = false; acc.lastCheck = new Date().toISOString(); }
             if (onEvent) onEvent({ type: 'disconnected', data: { ownId } });
             
             // Circuit Breaker logic
@@ -735,13 +1188,16 @@ export async function loginZaloAccount(customProxy, cred, onEvent = null) {
         const displayName = profile.displayName;
 
         const existingAccountIndex = zaloAccounts.findIndex((acc) => acc.ownId === api.getOwnId());
+        const now = new Date();
         if (existingAccountIndex !== -1) {
             zaloAccounts[existingAccountIndex] = {
                 api,
                 ownId: api.getOwnId(),
                 proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
                 phoneNumber,
-                lastAPIMessage: ""
+                lastAPIMessage: "",
+                online: true,
+                lastCheck: now.toISOString()
             };
         } else {
             zaloAccounts.push({
@@ -749,7 +1205,9 @@ export async function loginZaloAccount(customProxy, cred, onEvent = null) {
                 ownId: api.getOwnId(),
                 proxy: useCustomProxy ? customProxy : proxyUsed?.url || null,
                 phoneNumber,
-                lastAPIMessage: ""
+                lastAPIMessage: "",
+                online: true,
+                lastCheck: now.toISOString()
             });
         }
 
@@ -787,3 +1245,89 @@ export async function loginZaloAccount(customProxy, cred, onEvent = null) {
         );
     });
 }
+
+// =========================
+// GET GROUP MEMBERS INFO
+// Required: ownId
+// Optional: groupId, memberId
+// =========================
+export async function getGroupMembersInfo(req, res) {
+    try {
+        const { groupId, memberId, ownId } = req.body;
+        if (!ownId) {
+            return res.status(400).json({ success: false, error: 'Thiếu ownId' });
+        }
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ success: false, error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+
+        let targetMemberIds = memberId;
+        if (groupId) {
+            const groupInfo = await account.api.getGroupInfo(groupId);
+            if (groupInfo && groupInfo.gridInfoMap && groupInfo.gridInfoMap[groupId]) {
+                targetMemberIds = groupInfo.gridInfoMap[groupId].memberIds;
+            } else {
+                return res.status(404).json({ success: false, error: 'Không tìm thấy thông tin nhóm hoặc nhóm không tồn tại' });
+            }
+        }
+
+        if (!targetMemberIds || (Array.isArray(targetMemberIds) && targetMemberIds.length === 0)) {
+            return res.status(400).json({ success: false, error: 'Dữ liệu không hợp lệ: Cần cung cấp groupId hoặc memberId' });
+        }
+
+        const result = await account.api.getGroupMembersInfo(targetMemberIds);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// =========================
+// GET MULTI USERS BY PHONES
+// Required: ownId, phones/phoneNumbers
+// Optional: avatarSize
+// =========================
+export async function getMultiUsersByPhones(req, res) {
+    try {
+        const { phones, phoneNumbers, ownId, avatarSize } = req.body;
+        if (!ownId) {
+            return res.status(400).json({ success: false, error: 'Thiếu ownId' });
+        }
+        const targetPhones = phones || phoneNumbers;
+        if (!targetPhones || (Array.isArray(targetPhones) && targetPhones.length === 0)) {
+            return res.status(400).json({ success: false, error: 'Dữ liệu không hợp lệ: phones hoặc phoneNumbers là bắt buộc' });
+        }
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ success: false, error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.getMultiUsersByPhones(targetPhones, avatarSize);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
+// =========================
+// GET FRIEND REQUEST STATUS
+// Required: ownId, userId/friendId
+// =========================
+export async function getFriendRequestStatus(req, res) {
+    try {
+        const { userId, friendId, ownId } = req.body;
+        const targetUserId = userId || friendId;
+        if (!targetUserId || !ownId) {
+            return res.status(400).json({ success: false, error: 'Dữ liệu không hợp lệ: userId/friendId và ownId là bắt buộc' });
+        }
+        const account = zaloAccounts.find(acc => acc.ownId === ownId);
+        if (!account) {
+            return res.status(400).json({ success: false, error: 'Không tìm thấy tài khoản Zalo với OwnId này' });
+        }
+        const result = await account.api.getFriendRequestStatus(targetUserId);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+

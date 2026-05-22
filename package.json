@@ -1,6 +1,6 @@
 {
   "name": "zalo-tools-v4",
-  "version": "4.20260410",
+  "version": "4.20260522",
   "type": "module",
   "scripts": {
     "start": "node server.js"

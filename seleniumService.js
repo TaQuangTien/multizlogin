@@ -1,16 +1,20 @@
 import { Builder, By, until } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
+import { exec } from 'child_process';
+import util from 'util';
+
+const execPromise = util.promisify(exec);
 
 let activeDriver = null;
+let seleniumTimeout = null;
 let extractionData = { imei: null, cookies: null, userAgent: null };
 
 // Hàm hỗ trợ chờ (sleep)
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function startSeleniumLogin() {
-    if (activeDriver) {
-        try { await activeDriver.quit(); } catch (e) {}
-    }
+    await stopSelenium();
+    await sleep(1000); // Nghỉ 1 giây để hệ thống và Selenium Grid giải phóng hoàn toàn slot và port
 
     extractionData = { imei: null, cookies: null, userAgent: null };
 
@@ -19,6 +23,18 @@ export async function startSeleniumLogin() {
     chromeOptions.addArguments('--disable-dev-shm-usage');
     chromeOptions.addArguments('--start-maximized');
     chromeOptions.addArguments('--window-size=1280,800');
+    // Tối ưu hóa tiết kiệm RAM & CPU khi chạy ngầm trên Docker/Xvfb
+    chromeOptions.addArguments('--disable-gpu');
+    chromeOptions.addArguments('--disable-extensions');
+    chromeOptions.addArguments('--disable-background-networking');
+    chromeOptions.addArguments('--disable-background-timer-throttling');
+    chromeOptions.addArguments('--disable-backgrounding-occluded-windows');
+    chromeOptions.addArguments('--disable-sync');
+    chromeOptions.addArguments('--disable-translate');
+    chromeOptions.addArguments('--metrics-recording-only');
+    chromeOptions.addArguments('--mute-audio');
+    chromeOptions.addArguments('--no-first-run');
+
     // Chạy trực tiếp tại localhost (vì gộp chung 1 container)
     const serverUrl = 'http://localhost:4444/wd/hub';
 
@@ -59,9 +75,16 @@ export async function startSeleniumLogin() {
         // Điều hướng thẳng tới Zalo Web
         await activeDriver.get('https://chat.zalo.me');
         
+        // Tự động đóng Selenium sau 10 phút để tránh kẹt tiến trình Chrome ngốn CPU
+        seleniumTimeout = setTimeout(() => {
+            console.log("Tự động đóng Selenium sau 10 phút để tiết kiệm CPU");
+            stopSelenium();
+        }, 10 * 60 * 1000);
+        
         return { success: true, message: 'Selenium started. Access noVNC at port 7900' };
     } catch (error) {
         console.error('Lỗi điều hướng Selenium:', error);
+        stopSelenium();
         return { success: false, error: error.message };
     }
 }
@@ -111,10 +134,27 @@ export async function pollLoginStatus() {
 }
 
 export async function stopSelenium() {
+    if (seleniumTimeout) {
+        clearTimeout(seleniumTimeout);
+        seleniumTimeout = null;
+    }
     if (activeDriver) {
         try {
             await activeDriver.quit();
-        } catch (e) {}
+            console.log("Đã đóng và dọn dẹp tiến trình Chromium thành công.");
+        } catch (e) {
+            console.warn("Lỗi khi đóng activeDriver (có thể đã đóng):", e.message);
+        }
         activeDriver = null;
+    }
+
+    // Dọn dẹp triệt để các tiến trình rác (zombie/orphan) và file tạm của Chrome/ChromeDriver trong hệ thống
+    try {
+        await execPromise('pkill -9 -f chrome || true');
+        await execPromise('pkill -9 -f chromedriver || true');
+        await execPromise('rm -rf /tmp/.org.chromium.* /tmp/.com.google.Chrome.* /tmp/scoped_dir* || true');
+        console.log("Đã dọn dẹp triệt để tiến trình và tệp tạm Chrome/ChromeDriver trong container.");
+    } catch (err) {
+        console.warn("Lỗi khi dọn dẹp tiến trình/tệp tạm:", err.message);
     }
 }

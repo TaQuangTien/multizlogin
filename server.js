@@ -39,8 +39,8 @@ app.use(session({
   cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
 }));
 app.use(fileUpload());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/', routes);
 
 export function broadcastEvent(event, data = {}) {
@@ -78,11 +78,11 @@ async function loadCookies() {
         try {
           const cookie = JSON.parse(fs.readFileSync(`${cookiesDir}/${file}`, 'utf-8'));
           await loginZaloAccount(null, cookie, (event) => {
-             // Handle background events during auto-reconnect
-             if (event.type === 'error') {
-                 console.error(`[Zalo:${ownId}] Background error:`, event.data.message);
-             }
-             broadcastEvent('zalo_status', { ownId, ...event });
+            // Handle background events during auto-reconnect
+            if (event.type === 'error') {
+              console.error(`[Zalo:${ownId}] Background error:`, event.data.message);
+            }
+            broadcastEvent('zalo_status', { ownId, ...event });
           });
           console.log(`Đã đăng nhập lại tài khoản ${ownId} từ cookie.`);
           addLog('Auth', `Tài khoản ${ownId} đã đăng nhập lại từ cookie`);
@@ -101,7 +101,7 @@ async function loadCookies() {
 async function startServer() {
   try {
     await loadCookies();
-    
+
     server.listen(INTERNAL_PORT, LISTEN_IP, () => {
       console.log(`Actually listening on port ${INTERNAL_PORT}`);
       addLog('System', `Server đang lắng nghe trên cổng ${INTERNAL_PORT}`);

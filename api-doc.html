@@ -202,7 +202,7 @@
     <p class="subtitle">REST API Server &amp; Web UI để quản lý nhiều tài khoản Zalo — Tích hợp Webhook, Proxy &amp; QR
       Login</p>
     <div class="meta">
-      <span>Phiên bản: v4.20260410</span>
+      <span>Phiên bản: v{{APP_VERSION}}</span>
       <span>Phát triển bởi: Tiến Tạ</span>
       <span>Năm: 2026</span>
       <span>Powered by: zca-js (unofficial Zalo API)</span>
@@ -216,8 +216,15 @@
     </div>
 
     <div class="auth-note">
-      <strong>Xác thực API:</strong> Tất cả các endpoint đều yêu cầu header <code>x-api-key: YOUR_API_KEY</code>.
-      Giá trị này được cấu hình qua biến môi trường <code>X_API_KEY</code>.
+      <strong>Xác thực API:</strong> Các endpoint yêu cầu 2 lớp xác thực:
+      <ul>
+        <li>Header <code>x-api-key: YOUR_API_KEY</code> (Cấu hình qua <code>X_API_KEY</code>).</li>
+        <li><strong>Basic Auth:</strong> Header <code>Authorization</code> chứa username/password (Cấu hình qua <code>ADMIN_USERNAME</code> và <code>ADMIN_PASSWORD</code>).</li>
+      </ul>
+    </div>
+
+    <div class="auth-note" style="background: #f1f8e9; border-left-color: #4caf50; color: #2e7d32;">
+      <strong>Cấu hình Self Listen:</strong> Sử dụng biến môi trường <code>SELF_LISTEN=true</code> nếu bạn muốn bot nhận được cả các tin nhắn do chính nó gửi đi. Mặc định là <code>false</code>.
     </div>
 
     <h2>Mục lục</h2>
@@ -225,16 +232,28 @@
       <li><a href="#findUser">findUser</a></li>
       <li><a href="#getUserInfo">getUserInfo</a></li>
       <li><a href="#sendFriendRequest">sendFriendRequest</a></li>
+      <li><a href="#undoFriendRequest">undoFriendRequest</a></li>
       <li><a href="#sendMessage">sendMessage</a></li>
+      <li><a href="#sendImageToUser">sendImageToUser</a></li>
+      <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
+      <li><a href="#sendFileToUser">sendFileToUser</a></li>
+      <li><a href="#sendFileToGroup">sendFileToGroup</a></li>
+      <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
+      <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
       <li><a href="#createGroup">createGroup</a></li>
       <li><a href="#getGroupInfo">getGroupInfo</a></li>
       <li><a href="#addUserToGroup">addUserToGroup</a></li>
       <li><a href="#removeUserFromGroup">removeUserFromGroup</a></li>
-      <li><a href="#sendImageToUser">sendImageToUser</a></li>
-      <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
-      <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
-      <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
       <li><a href="#accounts">accounts</a></li>
+      <li><a href="#health">health</a></li>
+      <li><a href="#updateWebhookByAccount">updateWebhookByAccount</a></li>
+      <li><a href="#changeFriendAlias">changeFriendAlias</a></li>
+      <li><a href="#sendVideoToUser">sendVideoToUser</a></li>
+      <li><a href="#sendVideoToGroup">sendVideoToGroup</a></li>
+      <li><a href="#getAliasList">getAliasList</a></li>
+      <li><a href="#getAllFriends">getAllFriends</a></li>
+      <li><a href="#getAllGroups">getAllGroups</a></li>
+      <li><a href="#getSentFriendRequest">getSentFriendRequest</a></li>
     </ol>
 
     <hr />
@@ -242,26 +261,6 @@
     <h3 id="findUser">
       <div class="endpoint-header">1. findUser <span class="badge post">POST</span></div>
     </h3>
-    <h2>Mục lục</h2>
-    <ol>
-      <li><a href="#findUser">findUser</a></li>
-      <li><a href="#getUserInfo">getUserInfo</a></li>
-      <li><a href="#sendFriendRequest">sendFriendRequest</a></li>
-      <li><a href="#sendMessage">sendMessage</a></li>
-      <li><a href="#createGroup">createGroup</a></li>
-      <li><a href="#getGroupInfo">getGroupInfo</a></li>
-      <li><a href="#addUserToGroup">addUserToGroup</a></li>
-      <li><a href="#removeUserFromGroup">removeUserFromGroup</a></li>
-      <li><a href="#sendImageToUser">sendImageToUser</a></li>
-      <li><a href="#sendImagesToUser">sendImagesToUser</a></li>
-      <li><a href="#sendImageToGroup">sendImageToGroup</a></li>
-      <li><a href="#sendImagesToGroup">sendImagesToGroup</a></li>
-      <li><a href="#accounts">accounts</a></li>
-    </ol>
-
-    <hr />
-
-    <h3 id="findUser">1. findUser</h3>
     <p><strong>Mục đích:</strong> Tìm kiếm người dùng dựa trên số điện thoại.</p>
     <p><strong>Endpoint:</strong> POST /findUser</p>
     <p><strong>Parameters:</strong></p>
@@ -294,7 +293,7 @@
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "phone": "0123456789",
   "ownId": "0000000000000000001"
 }' http://localhost:3000/findUser
@@ -335,7 +334,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000001",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getUserInfo
@@ -362,6 +361,12 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
         <td>Có</td>
       </tr>
       <tr>
+        <td>message</td>
+        <td>string</td>
+        <td>Lời nhắn gửi kèm thông tin kết bạn.</td>
+        <td>Không</td>
+      </tr>
+      <tr>
         <td>ownId</td>
         <td>string</td>
         <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
@@ -376,16 +381,58 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "userId": "0000000000000000002",
-  "ownId": "0000000000000000001"
+  "ownId": "0000000000000000001",
+  "message": "Chào bạn, mình kết bạn nhé!"
 }' http://localhost:3000/sendFriendRequest
       </pre>
 
     <hr />
 
+    <h3 id="undoFriendRequest">
+      <div class="endpoint-header">4. undoFriendRequest <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Thu hồi lời mời kết bạn đã gửi.</p>
+    <p><strong>Endpoint:</strong> POST /undoFriendRequest</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>userId</td>
+        <td>string</td>
+        <td>ID của người dùng đã gửi lời mời.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "userId": "0000000000000000002",
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "userId": "0000000000000000002",
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/undoFriendRequest
+      </pre>
+
+    <hr />
+
     <h3 id="sendMessage">
-      <div class="endpoint-header">4. sendMessage <span class="badge post">POST</span></div>
+      <div class="endpoint-header">5. sendMessage <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Gửi tin nhắn văn bản (hoặc object) đến người dùng hoặc nhóm.</p>
     <p><strong>Endpoint:</strong> POST /sendmessage</p>
@@ -420,29 +467,37 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
         <td>ID tài khoản Zalo đang đăng nhập (lấy từ /accounts).</td>
         <td>Có</td>
       </tr>
+      <tr>
+        <td>imagePath</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL ảnh nếu muốn gửi kèm ảnh trong cùng 1 tin nhắn.</td>
+        <td>Không</td>
+      </tr>
     </table>
     <pre>
 {
-  "message": "Xin chào",
+  "message": "Xin chào kèm ảnh",
   "threadId": "0000000000000000001",
   "type": "0",
-  "ownId": "0000000000000000009"
+  "ownId": "0000000000000000009",
+  "imagePath": "https://example.com/image.jpg"
 }
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
-  "message": "Xin chào",
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "message": "Xin chào kèm ảnh",
   "threadId": "0000000000000000001",
   "type": "0",
-  "ownId": "0000000000000000009"
+  "ownId": "0000000000000000009",
+  "imagePath": "https://example.com/image.jpg"
 }' http://localhost:3000/sendmessage
       </pre>
 
     <hr />
 
     <h3 id="createGroup">
-      <div class="endpoint-header">5. createGroup <span class="badge post">POST</span></div>
+      <div class="endpoint-header">6. createGroup <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Tạo một nhóm mới.</p>
     <p><strong>Endpoint:</strong> POST /createGroup</p>
@@ -488,7 +543,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "members": ["0000000000000000002", "0000000000000000003"],
   "name": "Nhóm Mới",
   "avatarPath": "./avatar.jpg",
@@ -499,7 +554,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="getGroupInfo">
-      <div class="endpoint-header">6. getGroupInfo <span class="badge post">POST</span></div>
+      <div class="endpoint-header">7. getGroupInfo <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Lấy thông tin chi tiết của các nhóm.</p>
     <p><strong>Endpoint:</strong> POST /getGroupInfo</p>
@@ -531,7 +586,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "ownId": "0000000000000000009"
 }' http://localhost:3000/getGroupInfo
@@ -540,7 +595,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="addUserToGroup">
-      <div class="endpoint-header">7. addUserToGroup <span class="badge post">POST</span></div>
+      <div class="endpoint-header">8. addUserToGroup <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Thêm thành viên vào nhóm.</p>
     <p><strong>Endpoint:</strong> POST /addUserToGroup</p>
@@ -579,7 +634,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
@@ -589,7 +644,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="removeUserFromGroup">
-      <div class="endpoint-header">8. removeUserFromGroup <span class="badge post">POST</span></div>
+      <div class="endpoint-header">9. removeUserFromGroup <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Xóa thành viên khỏi nhóm.</p>
     <p><strong>Endpoint:</strong> POST /removeUserFromGroup</p>
@@ -628,7 +683,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "groupId": "0000000000000000000",
   "memberId": ["0000000000000000001", "0000000000000000002"],
   "ownId": "0000000000000000009"
@@ -638,7 +693,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="sendImageToUser">
-      <div class="endpoint-header">9. sendImageToUser <span class="badge post">POST</span></div>
+      <div class="endpoint-header">10. sendImageToUser <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một người dùng Zalo.</p>
     <p><strong>Endpoint:</strong> POST /sendImageToUser</p>
@@ -696,7 +751,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePath": "https://example.com/image.jpg",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
@@ -704,7 +759,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imageData):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
@@ -714,7 +769,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="sendImagesToUser">
-      <div class="endpoint-header">10. sendImagesToUser <span class="badge post">POST</span></div>
+      <div class="endpoint-header">11. sendImagesToUser <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một người dùng Zalo.</p>
     <p><strong>Endpoint:</strong> POST /sendImagesToUser</p>
@@ -775,7 +830,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePaths": ["https://example.com/image1.jpg", "https://example.com/image2.png"],
   "threadId": "0000000000000000001",
   "ownId": "0000000000000000009"
@@ -783,7 +838,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA..."
@@ -795,8 +850,151 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
 
     <hr />
 
+    <h3 id="sendFileToUser">
+      <div class="endpoint-header">12. sendFileToUser <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi file tài liệu, nén, audio hoặc video đến người dùng.</p>
+    <p><strong>Endpoint:</strong> POST /sendFileToUser</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>filePath</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của file.</td>
+        <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+      </tr>
+      <tr>
+        <td>fileData</td>
+        <td>string</td>
+        <td>Dữ liệu file dạng base64.</td>
+        <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+      </tr>
+      <tr>
+        <td>mimeType</td>
+        <td>string</td>
+        <td>MIME type của file (ví dụ: application/pdf).</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của người dùng nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+
+    <div class="alert alert-info mt-3">
+      <strong>Định dạng hỗ trợ:</strong>
+      <ul class="mb-0">
+        <li><strong>Tài liệu:</strong> .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx</li>
+        <li><strong>Văn bản:</strong> .txt, .csv, .json, .xml</li>
+        <li><strong>Nén:</strong> .zip, .rar, .7z</li>
+        <li><strong>Âm thanh:</strong> .mp3, .wav, .ogg, .m4a</li>
+        <li><strong>Video:</strong> .mp4, .avi, .mov</li>
+        <li><strong>Ảnh:</strong> .jpg, .png, .gif, .webp, .svg</li>
+      </ul>
+      <small>* Các định dạng khác sẽ được gửi dưới dạng file binary (.bin)</small>
+    </div>
+
+    <p><strong>Ví dụ curl (sử dụng filePath/URL):</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "filePath": "https://example.com/document.pdf",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToUser
+      </pre>
+
+    <p><strong>Ví dụ curl (sử dụng fileData Base64):</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "fileData": "SGVsbG8gdHUgVMO0bSB0ZXN0Cg==",
+  "mimeType": "text/plain",
+  "threadId": "0000000000000000001",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToUser
+      </pre>
+
+    <hr />
+
+    <h3 id="sendFileToGroup">
+      <div class="endpoint-header">13. sendFileToGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi file tài liệu, nén, audio hoặc video vào nhóm Zalo.</p>
+    <p><strong>Endpoint:</strong> POST /sendFileToGroup</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>filePath</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của file.</td>
+        <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+      </tr>
+      <tr>
+        <td>fileData</td>
+        <td>string</td>
+        <td>Dữ liệu file dạng base64.</td>
+        <td>Không (yêu cầu một trong filePath hoặc fileData)</td>
+      </tr>
+      <tr>
+        <td>mimeType</td>
+        <td>string</td>
+        <td>MIME type của file (ví dụ: application/pdf).</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của nhóm nhận tin nhắn.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo gửi tin (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+
+    <p><strong>Ví dụ curl (sử dụng filePath/URL):</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "filePath": "https://example.com/document.pdf",
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToGroup
+      </pre>
+
+    <p><strong>Ví dụ curl (sử dụng fileData Base64):</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "fileData": "SGVsbG8gdHUgVMO0bSB0ZXN0Cg==",
+  "mimeType": "text/plain",
+  "threadId": "0000000000000000000",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/sendFileToGroup
+      </pre>
+
+    <hr />
+
     <h3 id="sendImageToGroup">
-      <div class="endpoint-header">11. sendImageToGroup <span class="badge post">POST</span></div>
+      <div class="endpoint-header">14. sendImageToGroup <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Gửi một hình ảnh đến một nhóm Zalo.</p>
     <p><strong>Endpoint:</strong> POST /sendImageToGroup</p>
@@ -846,15 +1044,15 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ (sử dụng imageData):</strong></p>
     <pre>
-{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
-}
+}' http://localhost:3000/sendImageToGroup
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagePath):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePath": "https://example.com/group-image.jpg",
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
@@ -872,7 +1070,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="sendImagesToGroup">
-      <div class="endpoint-header">12. sendImagesToGroup <span class="badge post">POST</span></div>
+      <div class="endpoint-header">15. sendImagesToGroup <span class="badge post">POST</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Gửi nhiều hình ảnh đến một nhóm Zalo.</p>
     <p><strong>Endpoint:</strong> POST /sendImagesToGroup</p>
@@ -933,7 +1131,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagePaths):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagePaths": ["https://example.com/group-image1.jpg", "https://example.com/group-image2.png"],
   "threadId": "0000000000000000000",
   "ownId": "0000000000000000009"
@@ -941,7 +1139,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl (sử dụng imagesData):</strong></p>
     <pre>
-curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
   "imagesData": [
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...",
     "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
@@ -954,7 +1152,7 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
     <hr />
 
     <h3 id="accounts">
-      <div class="endpoint-header">13. accounts <span class="badge get">GET</span></div>
+      <div class="endpoint-header">16. accounts <span class="badge get">GET</span></div>
     </h3>
     <p><strong>Mục đích:</strong> Lấy danh sách tài khoản đã đăng nhập.</p>
     <p><strong>Endpoint:</strong> GET /accounts</p>
@@ -976,7 +1174,400 @@ curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d
       </pre>
     <p><strong>Ví dụ curl:</strong></p>
     <pre>
-curl -H "x-api-key: YOUR_API_KEY" http://localhost:3000/accounts
+curl -u ADMIN_USER:ADMIN_PASS -H "x-api-key: YOUR_API_KEY" http://localhost:3000/accounts
+      </pre>
+
+    <hr />
+
+    <h3 id="health">
+      <div class="endpoint-header">17. health <span class="badge get">GET</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Kiểm tra trạng thái hoạt động của hệ thống và các tài khoản Zalo.</p>
+    <p><strong>Endpoint:</strong> GET /health</p>
+    <p><strong>Response Example:</strong></p>
+    <pre>
+{
+  "success": true,
+  "accounts": [
+    {
+      "ownId": "0000000000000000001",
+      "status": "ONLINE",
+      "phoneNumber": "0387xxxxxx"
+    }
+  ]
+}
+      </pre>
+
+    <hr />
+
+    <h3 id="updateWebhookByAccount">
+      <div class="endpoint-header">18. updateWebhookByAccount <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Cập nhật URL Webhook và cấu hình riêng cho từng tài khoản.</p>
+    <p><strong>Endpoint:</strong> POST /updateWebhookByAccount</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo cần cấu hình.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>url</td>
+        <td>string</td>
+        <td>URL nhận Webhook.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>settings</td>
+        <td>object</td>
+        <td>Cài đặt nhận sự kiện (ví dụ: <code>{ "receiveReaction": true, "receiveGroupEvent": true }</code>).</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>pullMode</td>
+        <td>boolean</td>
+        <td>Chế độ pull mode (mặc định false).</td>
+        <td>Không</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "ownId": "0000000000000000001",
+  "url": "https://your-server.com/webhook",
+  "settings": { "receiveReaction": true, "receiveGroupEvent": true },
+  "pullMode": false
+}
+      </pre>
+
+    <hr />
+
+    <h3 id="changeFriendAlias">
+      <div class="endpoint-header">19. changeFriendAlias <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Đổi tên gợi nhớ (alias) của bạn bè.</p>
+    <p><strong>Endpoint:</strong> POST /changeFriendAlias</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>userId</td>
+        <td>string</td>
+        <td>ID của người dùng cần đổi tên gợi nhớ.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>alias</td>
+        <td>string</td>
+        <td>Tên gợi nhớ mới.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "userId": "0000000000000000001",
+  "alias": "Bạn thân",
+  "ownId": "0000000000000000009"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "userId": "0000000000000000001",
+  "alias": "Bạn thân",
+  "ownId": "0000000000000000009"
+}' http://localhost:3000/changeFriendAlias
+      </pre>
+
+
+    <h3 id="sendVideoToUser">
+      <div class="endpoint-header">20. sendVideoToUser <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi video đến người dùng.</p>
+    <p><strong>Endpoint:</strong> POST /sendVideoToUser</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>videoUrl</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của video (mp4 hoặc file local).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>thumbnailUrl</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của ảnh thumbnail (bắt buộc).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>message</td>
+        <td>string</td>
+        <td>Nội dung tin nhắn đi kèm video.</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID của người dùng nhận video.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "videoUrl": "https://example.com/video.mp4",
+  "thumbnailUrl": "https://example.com/thumb.jpg",
+  "threadId": "123456789012345",
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "videoUrl": "https://example.com/video.mp4",
+  "thumbnailUrl": "https://example.com/thumb.jpg",
+  "threadId": "123456789012345",
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/sendVideoToUser
+      </pre>
+
+    <hr />
+
+    <h3 id="sendVideoToGroup">
+      <div class="endpoint-header">21. sendVideoToGroup <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Gửi video vào nhóm.</p>
+    <p><strong>Endpoint:</strong> POST /sendVideoToGroup</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>videoUrl</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của video (mp4 hoặc file local).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>thumbnailUrl</td>
+        <td>string</td>
+        <td>Đường dẫn hoặc URL của ảnh thumbnail (bắt buộc).</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>message</td>
+        <td>string</td>
+        <td>Nội dung tin nhắn đi kèm video.</td>
+        <td>Không</td>
+      </tr>
+      <tr>
+        <td>threadId</td>
+        <td>string</td>
+        <td>ID nhóm nhận video.</td>
+        <td>Có</td>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện (lấy từ /accounts).</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "videoUrl": "https://example.com/video.mp4",
+  "thumbnailUrl": "https://example.com/thumb.jpg",
+  "threadId": "123456789012345",
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "videoUrl": "https://example.com/video.mp4",
+  "thumbnailUrl": "https://example.com/thumb.jpg",
+  "threadId": "123456789012345",
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/sendVideoToGroup
+      </pre>
+
+    <hr />
+
+    <h3 id="getAliasList">
+      <div class="endpoint-header">22. getAliasList <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy danh sách tên gợi nhớ (alias) đã cấu hình.</p>
+    <p><strong>Endpoint:</strong> POST /getAliasList</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện.</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/getAliasList
+      </pre>
+
+    <hr />
+
+    <h3 id="getAllFriends">
+      <div class="endpoint-header">23. getAllFriends <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy danh sách tất cả bạn bè.</p>
+    <p><strong>Endpoint:</strong> POST /getAllFriends</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện.</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/getAllFriends
+      </pre>
+
+    <hr />
+
+    <h3 id="getAllGroups">
+      <div class="endpoint-header">24. getAllGroups <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy danh sách các nhóm đã tham gia.</p>
+    <p><strong>Endpoint:</strong> POST /getAllGroups</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện.</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/getAllGroups
+      </pre>
+
+    <hr />
+
+    <h3 id="getSentFriendRequest">
+      <div class="endpoint-header">25. getSentFriendRequest <span class="badge post">POST</span></div>
+    </h3>
+    <p><strong>Mục đích:</strong> Lấy danh sách các yêu cầu kết bạn đã gửi.</p>
+    <p><strong>Endpoint:</strong> POST /getSentFriendRequest</p>
+    <table>
+      <tr>
+        <th>Field</th>
+        <th>Loại</th>
+        <th>Mô tả</th>
+        <th>Bắt buộc</th>
+      </tr>
+      <tr>
+        <td>ownId</td>
+        <td>string</td>
+        <td>ID tài khoản Zalo thực hiện.</td>
+        <td>Có</td>
+      </tr>
+    </table>
+    <pre>
+{
+  "ownId": "0000000000000000001"
+}
+      </pre>
+    <p><strong>Ví dụ curl:</strong></p>
+    <pre>
+curl -X POST -u ADMIN_USER:ADMIN_PASS -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -d '{
+  "ownId": "0000000000000000001"
+}' http://localhost:3000/getSentFriendRequest
+      </pre>
+
+    <hr />
+
+    <h2 id="webhooks">Hướng dẫn về Webhook</h2>
+    <p>Khi có tin nhắn mới hoặc sự kiện từ Zalo, server sẽ gửi một HTTP POST request đến URL Webhook bạn đã kết nối.</p>
+    <p><strong>Cấu trúc Payload thông thường:</strong></p>
+    <pre>
+{
+  "event": "message.receive",
+  "ownId": "ID_TÀI_KHOẢN_NHẬN",
+  "data": {
+    "from": "ID_NGƯỜI_GỬI",
+    "content": "Nội dung tin nhắn",
+    "timestamp": 1713774000000,
+    ...
+  }
+}
       </pre>
 
     <hr />
@@ -1012,7 +1603,7 @@ curl -H "x-api-key: YOUR_API_KEY" http://localhost:3000/accounts
 
     <hr />
     <p style="text-align:center; color:#6c757d; font-size:0.82rem; margin-top:40px;">
-      Zalo Tools v4 &nbsp;|&nbsp; Phiên bản v4.20260410 &nbsp;|&nbsp; Phát triển bởi <strong>Tiến Tạ</strong> &mdash;
+      Zalo Tools v4 &nbsp;|&nbsp; Phiên bản v{{APP_VERSION}} &nbsp;|&nbsp; Phát triển bởi <strong>Tiến Tạ</strong> &mdash;
       2026
       <br />Liên hệ: Zalo / Điện thoại <strong>0387 553 113</strong>
     </p>

@@ -1,5 +1,5 @@
 // eventListeners.js
-import { getWebhookConfig, triggerN8nWebhook } from './helpers.js';
+import { getWebhookConfigs, triggerN8nWebhook } from './helpers.js';
 import fs from 'fs';
 import { loginZaloAccount, zaloAccounts } from './api/zalo/zalo.js';
 import { broadcastLoginSuccess } from './server.js';
@@ -12,49 +12,55 @@ export function setupEventListeners(api, loginResolve) {
   const ownId = api.getOwnId();
 
   api.listener.on('message', (msg) => {
-    const config = getWebhookConfig(ownId);
-    const webhookUrl = config?.url;
-
     // Log message
     if (msg.isSelf) {
       const content = msg.data?.content ? msg.data.content : (msg.data?.msgType === 'chat.photo' ? '[Hình ảnh]' : '[File/Khác]');
-      addLog('Gửi tin nhắn', content, ownId, { type: msg.data?.msgType, toId: msg.threadId, msgId: msg.data?.msgId });
+      addLog('Gửi tin nhắn', content, ownId, { type: msg.data?.msgType, msgId: msg.data?.msgId }, msg.threadId, ownId);
     } else {
       const content = msg.data?.content ? msg.data.content : (msg.data?.msgType === 'chat.photo' ? '[Hình ảnh]' : '[File/Khác]');
-      addLog('Nhận tin nhắn', content, ownId, { type: msg.data?.msgType, fromId: msg.threadId, msgId: msg.data?.msgId });
+      const senderId = msg.data?.uidFrom || msg.data?.fromOaid || '';
+      addLog('Nhận tin nhắn', content, ownId, { type: msg.data?.msgType, msgId: msg.data?.msgId }, msg.threadId, senderId || msg.threadId);
     }
 
-    if (webhookUrl) {
-      let isAPI = false;
-      if (msg.isSelf && msg.data?.content) {
-        const account = zaloAccounts.find((acc) => acc.ownId === ownId);
-        const lastMsg = (account?.lastAPIMessage || "").toString();
-        const currentContent = (msg.data?.content || "").toString();
-        if (lastMsg && lastMsg === currentContent)
-          isAPI = true;
+    const configs = getWebhookConfigs(ownId);
+    for (const config of configs) {
+      const webhookUrl = config?.url;
+      if (webhookUrl) {
+        let isAPI = false;
+        if (msg.isSelf && msg.data?.content) {
+          const account = zaloAccounts.find((acc) => acc.ownId === ownId);
+          const lastMsg = (account?.lastAPIMessage || "").toString();
+          const currentContent = (msg.data?.content || "").toString();
+          if (lastMsg && lastMsg === currentContent)
+            isAPI = true;
+        }
+        triggerN8nWebhook({ ...msg, AccountID: ownId, isAPI, isself: msg.isSelf }, webhookUrl);
       }
-      triggerN8nWebhook({ ...msg, AccountID: ownId, isAPI, isself: msg.isSelf }, webhookUrl);
     }
   });
 
   api.listener.on('group_event', (data) => {
-    const config = getWebhookConfig(ownId);
-    const webhookUrl = config?.url;
-    const receiveGroupEvent = config?.settings?.receiveGroupEvent ?? true;
+    const configs = getWebhookConfigs(ownId);
+    for (const config of configs) {
+      const webhookUrl = config?.url;
+      const receiveGroupEvent = config?.settings?.receiveGroupEvent ?? true;
 
-    if (webhookUrl && receiveGroupEvent) {
-      triggerN8nWebhook({ ...data, AccountID: ownId }, webhookUrl);
+      if (webhookUrl && receiveGroupEvent) {
+        triggerN8nWebhook({ ...data, AccountID: ownId }, webhookUrl);
+      }
     }
   });
 
   api.listener.on('reaction', (reaction) => {
-    const config = getWebhookConfig(ownId);
-    const webhookUrl = config?.url;
-    const receiveReaction = config?.settings?.receiveReaction ?? true;
-
     console.log(`Nhận reaction cho ${ownId}:`, reaction);
-    if (webhookUrl && receiveReaction) {
-      triggerN8nWebhook({ ...reaction, AccountID: ownId }, webhookUrl);
+    const configs = getWebhookConfigs(ownId);
+    for (const config of configs) {
+      const webhookUrl = config?.url;
+      const receiveReaction = config?.settings?.receiveReaction ?? true;
+
+      if (webhookUrl && receiveReaction) {
+        triggerN8nWebhook({ ...reaction, AccountID: ownId }, webhookUrl);
+      }
     }
   });
 
@@ -69,13 +75,15 @@ export function setupEventListeners(api, loginResolve) {
 
     // Nếu bị ngắt kết nối do trùng lặp (3000) hoặc bị đá (3003), báo cáo logout về webhook
     if (code === 3000 || code === 3003) {
-      const config = getWebhookConfig(ownId);
-      if (config?.url) {
-        triggerN8nWebhook({
-          action: 'logout',
-          ownId: ownId,
-          reason: `Bị ngắt kết nối (Code: ${code}, Reason: ${reason})`
-        }, config.url);
+      const configs = getWebhookConfigs(ownId);
+      for (const config of configs) {
+        if (config?.url) {
+          triggerN8nWebhook({
+            action: 'logout',
+            ownId: ownId,
+            reason: `Bị ngắt kết nối (Code: ${code}, Reason: ${reason})`
+          }, config.url);
+        }
       }
     }
 
@@ -129,13 +137,15 @@ async function handleRelogin(api) {
       console.log(`Đã đăng nhập lại thành công tài khoản ${ownId}`);
     } catch (loginError) {
       console.error(`Đăng nhập lại thất bại cho ${ownId}:`, loginError.message);
-      const config = getWebhookConfig(ownId);
-      if (config?.url) {
-        triggerN8nWebhook({
-          action: 'logout',
-          ownId: ownId,
-          reason: `Đăng nhập lại thất bại: ${loginError.message}`
-        }, config.url);
+      const configs = getWebhookConfigs(ownId);
+      for (const config of configs) {
+        if (config?.url) {
+          triggerN8nWebhook({
+            action: 'logout',
+            ownId: ownId,
+            reason: `Đăng nhập lại thất bại: ${loginError.message}`
+          }, config.url);
+        }
       }
     }
   } catch (error) {

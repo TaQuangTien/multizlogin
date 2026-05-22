@@ -41,12 +41,3 @@ jspm_packages/
 *.vscode/
 
 cred*
-
-# Zalo data
-cookies/
-zalo_data/
-tmp_images/
-
-# Claude
-CLAUDE.md
-MEMORY.md

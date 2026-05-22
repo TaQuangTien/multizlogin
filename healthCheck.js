@@ -1,5 +1,5 @@
 import { zaloAccounts } from './api/zalo/zalo.js';
-import { getWebhookConfig, triggerN8nWebhook } from './helpers.js';
+import { getWebhookConfigs, triggerN8nWebhook } from './helpers.js';
 
 const HEALTH_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
@@ -19,14 +19,16 @@ async function checkSessions() {
 }
 
 async function reportLogout(ownId) {
-    const config = getWebhookConfig(ownId);
-    if (config && config.url) {
-        await triggerN8nWebhook({
-            action: 'session_logout',
-            ownId: ownId,
-            status: 'LOGOUT',
-            timestamp: new Date().toISOString()
-        }, config.url);
+    const configs = getWebhookConfigs(ownId);
+    for (const config of configs) {
+        if (config && config.url) {
+            await triggerN8nWebhook({
+                action: 'session_logout',
+                ownId: ownId,
+                status: 'LOGOUT',
+                timestamp: new Date().toISOString()
+            }, config.url);
+        }
     }
 }
 

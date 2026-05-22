@@ -14,6 +14,7 @@ services:
     shm_size: 2gb
     restart: always
     environment:
+      - TZ=Asia/Ho_Chi_Minh
       - START_XVFB=${START_XVFB:-true}
       - VNC_NO_PASSWORD=${VNC_NO_PASSWORD:-1}
       - SCREEN_WIDTH=${SCREEN_WIDTH:-1280}
@@ -23,8 +24,10 @@ services:
       - X_API_KEY=${X_API_KEY:-your_secret_api_key_here}
       - SESSION_SECRET=${SESSION_SECRET:-your_random_session_secret}
       - SELF_LISTEN=${SELF_LISTEN:-true}
+      - PULL_INTERVAL=${PULL_INTERVAL:-60}
       - SE_NODE_MAX_SESSIONS=${SE_NODE_MAX_SESSIONS:-1}
       - SE_NODE_SESSION_TIMEOUT=${SE_NODE_SESSION_TIMEOUT:-300}
+      - APP_VERSION=${APP_VERSION:-4.20260522}
     logging:
       driver: json-file
       options:

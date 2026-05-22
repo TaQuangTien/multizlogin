@@ -7,7 +7,9 @@ RUN /home/seluser/venv/bin/pip uninstall -y numpy || true
 RUN apt-get update && \
     apt-get install -y curl gnupg && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs libvips-dev
+    apt-get install -y nodejs libvips-dev tzdata && \
+    ln -fs /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata
 
 WORKDIR /app
 
